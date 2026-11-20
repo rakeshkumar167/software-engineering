@@ -130,6 +130,7 @@ jobs:
 </ul>
 
 <h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Practice by level</h2><p class="muted">Three tiers: 🟢 Easy (recall), 🟡 Medium (apply), 🔴 Hard (analyse and debug).</p><div id="levels"></div>
 <h2>Think it through</h2><div id="think"></div>
 <div class="pager"><a href="24-containers-cloud.html">← Containers & Cloud</a><a href="26-observability.html">Next: Observability →</a></div>
 </main>
@@ -147,4 +148,4 @@ window.THINK=[
 {q:"Your pipeline takes 40 minutes and developers have stopped waiting for it. How do you improve it?",a:"Cache dependencies, parallelise test jobs, run only affected tests, move slow E2E to nightly or post-merge, use faster runners, remove redundant steps."},
 {q:"A migration drops a column, and deploy order is: migrate DB, then deploy app. What can go wrong?",a:"The old app version still running reads the dropped column → errors during rollout or rollback. Use expand/contract: add new, deploy code that uses both, then remove the old later."}
 ];
-</script><script src="quiz.js"></script></body></html>
+</script><script src="levels/25.js"></script><script src="quiz.js"></script></body></html>

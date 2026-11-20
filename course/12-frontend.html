@@ -160,6 +160,7 @@ const user = await res.json();</code></pre>
 <div class="box">Try it: open any page, right-click → <b>Inspect</b>. Edit text in Elements; watch requests in Network. Changes are local to your browser only.</div>
 
 <h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Practice by level</h2><p class="muted">Three tiers: 🟢 Easy (recall), 🟡 Medium (apply), 🔴 Hard (analyse and debug).</p><div id="levels"></div>
 <h2>Think it through</h2><div id="think"></div>
 <div class="pager"><a href="11-data-formats.html">← Data Formats</a><a href="13-rest-api.html">Next: REST APIs →</a></div>
 </main>
@@ -177,4 +178,4 @@ window.THINK=[
 {q:"A user clicks 'Like'. Describe the steps from click to the count updating, without a page reload.",a:"Event listener runs → JS <code>fetch</code> POSTs to the server → server updates DB and returns JSON (new count) → JS updates the DOM text."},
 {q:"Why can't you trust that data validated in JavaScript in the browser is safe?",a:"Users control their browser and can bypass or modify JS, or send requests directly. Server must re-validate (module 5 and 28)."}
 ];
-</script><script src="quiz.js"></script></body></html>
+</script><script src="levels/12.js"></script><script src="quiz.js"></script></body></html>

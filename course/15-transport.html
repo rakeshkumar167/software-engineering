@@ -136,6 +136,7 @@ ws.onopen    = () =&gt; ws.send("Hello everyone!");</code></pre>
 </ul>
 
 <h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Practice by level</h2><p class="muted">Three tiers: 🟢 Easy (recall), 🟡 Medium (apply), 🔴 Hard (analyse and debug).</p><div id="levels"></div>
 <h2>Think it through</h2><div id="think"></div>
 <div class="pager"><a href="14-browser-security.html">← Browser Security</a><a href="16-proxies-caching.html">Next: Proxies, CDNs, Caching →</a></div>
 </main>
@@ -154,4 +155,4 @@ window.THINK=[
 {q:"Why does DNS usually use UDP?",a:"Queries and answers are tiny; a handshake would double the cost. If an answer is lost, the client just asks again (falls back to TCP for large answers)."},
 {q:"Why does a certificate expiry take a site down even though nothing else changed?",a:"Browsers refuse to trust an expired certificate, so TLS validation fails and users see a security warning. Automate renewal and monitor expiry."}
 ];
-</script><script src="quiz.js"></script></body></html>
+</script><script src="levels/15.js"></script><script src="quiz.js"></script></body></html>

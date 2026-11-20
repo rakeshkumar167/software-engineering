@@ -165,6 +165,7 @@ cur.execute("SELECT * FROM users WHERE name = %s", (name,))</code></pre></li>
 </ul>
 
 <h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Practice by level</h2><p class="muted">Three tiers: 🟢 Easy (recall), 🟡 Medium (apply), 🔴 Hard (analyse and debug).</p><div id="levels"></div>
 <h2>Think it through</h2><div id="think"></div>
 <div class="pager"><a href="17-modern-auth.html">← Modern Auth</a><a href="19-backend.html">Next: Backend Frameworks →</a></div>
 </main>
@@ -183,4 +184,4 @@ window.THINK=[
 {q:"A query on a 10-million-row table is slow. What do you check?",a:"<code>EXPLAIN</code> the query; is there an index on filtered/joined columns? Are you selecting too many columns/rows? N+1 queries? Missing pagination?"},
 {q:"Why is it a bad idea to store the customer's name in every order row?",a:"Duplicated data can become inconsistent when changed (update anomaly). Store once in <code>customers</code> and reference by ID, unless you intentionally want a historical snapshot."}
 ];
-</script><script src="quiz.js"></script></body></html>
+</script><script src="levels/18.js"></script><script src="quiz.js"></script></body></html>

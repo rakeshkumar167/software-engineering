@@ -123,6 +123,7 @@ with open("user.json", "w", encoding="utf-8") as f:
 <div class="box">Never trust incoming data: validate it. Malformed JSON, huge files and unexpected types are normal on the internet. Also, never deserialise untrusted data with formats that can execute code (e.g. Python <code>pickle</code>).</div>
 
 <h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Practice by level</h2><p class="muted">Three tiers: 🟢 Easy (recall), 🟡 Medium (apply), 🔴 Hard (analyse and debug).</p><div id="levels"></div>
 <h2>Think it through</h2><div id="think"></div>
 <div class="pager"><a href="10-debugging.html">← Debugging</a><a href="12-frontend.html">Next: HTML, CSS, JS & DOM →</a></div>
 </main>
@@ -140,4 +141,4 @@ window.THINK=[
 {q:"A CSV has a name field containing a comma, like 'Smith, John'. How does the format cope and what goes wrong in a naive parser?",a:"Fields with commas are wrapped in quotes: <code>\"Smith, John\",42</code>. A naive <code>line.split(',')</code> splits inside the name. Use a CSV library."},
 {q:"Why would a team choose JSON over a binary format for an API, and when would they not?",a:"JSON is readable, debuggable, universal. Binary is smaller/faster, which matters at high volume or low bandwidth."}
 ];
-</script><script src="quiz.js"></script></body></html>
+</script><script src="levels/11.js"></script><script src="quiz.js"></script></body></html>

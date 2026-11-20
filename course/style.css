@@ -69,3 +69,11 @@ h3.dq{margin:1.6em 0 .2em}
 .convo p code{background:rgba(0,0,0,.09)}
 .story pre,.brain pre{color:inherit}
 details.dumb p,details.pencil p{margin:.5em 0 .2em}
+
+/* difficulty levels */
+.muted{color:var(--muted,#6b7280)}
+.lvl{margin:22px 0 8px;padding:6px 12px;border-radius:8px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.lvl small{font-weight:600}
+.lvl.easy{background:rgba(34,160,90,.15);border-left:5px solid #22a05a}
+.lvl.medium{background:rgba(230,170,20,.17);border-left:5px solid #e6aa14}
+.lvl.hard{background:rgba(220,60,60,.15);border-left:5px solid #dc3c3c}

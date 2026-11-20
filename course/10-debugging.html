@@ -122,6 +122,7 @@ ZeroDivisionError: division by zero</code></pre>
 <div class="box">Logic and environment bugs don't give an error, so check your <b>assumptions</b>: print what you believe is true.</div>
 
 <h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Practice by level</h2><p class="muted">Three tiers: 🟢 Easy (recall), 🟡 Medium (apply), 🔴 Hard (analyse and debug).</p><div id="levels"></div>
 <h2>Think it through</h2><div id="think"></div>
 <div class="pager"><a href="09-dsa.html">← Data Structures</a><a href="11-data-formats.html">Next: Files & Data Formats →</a></div>
 </main>
@@ -139,4 +140,4 @@ window.THINK=[
 {q:"A page worked yesterday, today it's broken. You have 40 commits since. How do you find the culprit quickly?",a:"Bisect: test the middle commit, decide good/bad, halve the range each time. <code>git bisect</code> automates it; ~6 steps for 40 commits."},
 {q:"You get 'TypeError: cannot read property name of undefined'. List three questions you ask.",a:"Which variable is undefined? Where was it supposed to be set (API call failed? wrong key? timing)? What does the data actually look like at that point (log it)?"}
 ];
-</script><script src="quiz.js"></script></body></html>
+</script><script src="levels/10.js"></script><script src="quiz.js"></script></body></html>
