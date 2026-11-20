@@ -154,4 +154,4 @@ window.THINK=[
 {q:"Two users buy the last item at the same moment. How could both succeed incorrectly and how do you prevent it?",a:"Both read stock=1 then both decrement (race). Use a DB transaction with row locking (<code>SELECT ... FOR UPDATE</code>) or an atomic <code>UPDATE ... SET stock = stock-1 WHERE stock &gt; 0</code> and check rows affected."},
 {q:"Why does adding more threads not always make a program faster?",a:"CPU cores are limited, context switching and lock contention add overhead, and the bottleneck may be elsewhere (database, network)."}
 ];
-</script><script src="levels/22.js"></script><script src="quiz.js"></script></body></html>
+</script><script src="levels/22.js?v=2"></script><script src="quiz.js?v=2"></script></body></html>
