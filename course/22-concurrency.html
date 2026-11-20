@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>22. Concurrency and Async</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="22"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>22. Concurrency and Async: Threads, Event Loops, Race Conditions</h1>
+<p class="lead">Doing many things at once without breaking things.</p>
+<section class="hf">
+<h2>☕ Start here: the one-person coffee shop</h2>
+<div class="story"><b class="t">A story</b>
+Sam runs a coffee shop alone. A customer orders a latte. Sam starts the machine: the milk takes 2 minutes to steam. A <b>bad</b> Sam stands staring at the milk while 10 customers queue up. A <b>smart</b> Sam starts the milk, then takes the next order, serves a croissant, and returns when the machine <em>beeps</em>.<br><br>
+Sam is a <b>single thread</b>, but never idles while waiting. That's <b>async / event-loop concurrency</b>: lots of waiting, one worker, no wasted time.<br><br>
+Now the shop gets busy and hires 3 more baristas (<b>threads / processes</b>). Faster! But now two baristas grab the <em>last carton of milk</em> at the same moment...</div>
+
+<h3>Concurrency vs parallelism</h3>
+<pre class="fig">  Concurrency: ONE worker juggling many tasks (switching when one waits)
+     task A ─▇▇░░░▇▇░░         ▇ working   ░ waiting (network, disk)
+     task B ─░░▇▇▇░░▇▇
+
+  Parallelism: MANY workers truly working at the same instant (multiple CPU cores)
+     core 1 ─▇▇▇▇▇▇▇▇
+     core 2 ─▇▇▇▇▇▇▇▇</pre>
+<p>Tasks that mostly <b>wait</b> (network, database, disk) are <b>I/O-bound</b>: async or threads help. Tasks that crunch numbers (video encoding) are <b>CPU-bound</b>: you need more cores (multiple processes).</p>
+
+<h3>Async/await: do other things while waiting</h3>
+<pre><code>// Slow: waits for each, one after another  (~2 seconds)
+const user  = await fetch("/api/user");      // wait 1s
+const posts = await fetch("/api/posts");     // wait 1s
+
+// Fast: start both, THEN wait for both        (~1 second)
+const [user, posts] = await Promise.all([
+  fetch("/api/user"),
+  fetch("/api/posts"),
+]);</code></pre>
+<p><code>await</code> means "pause <em>me</em> here, let other tasks run, wake me when it's ready." A <b>Promise</b> (JS) or <b>Future</b> is an IOU for a value arriving later.</p>
+<div class="fixit"><b>Never block the event loop:</b> in a single-threaded server a 5-second CPU loop freezes <em>every</em> user. Offload heavy work to another process or a job queue.</div>
+
+<h3>Race conditions: two baristas, one carton of milk</h3>
+<pre class="fig">  counter = 5
+  Thread A: read 5 ─────────► compute 6 ─► write 6
+  Thread B:      read 5 ─► compute 6 ─► write 6          result: 6 ... should be 7!
+                 (both read BEFORE either wrote: one update lost)</pre>
+<pre><code>import threading
+count = 0
+def work():
+    global count
+    for _ in range(100_000):
+        count += 1                # NOT atomic: read, add, write
+threads = [threading.Thread(target=work) for _ in range(4)]
+[t.start() for t in threads]; [t.join() for t in threads]
+print(count)     # expected 400000. Often LESS. Run it a few times!
+
+# fix: protect the critical section
+lock = threading.Lock()
+def work_safe():
+    global count
+    for _ in range(100_000):
+        with lock:                # only one thread at a time in here
+            count += 1</code></pre>
+
+<h3>Deadlock: two polite people at a doorway</h3>
+<div class="convo">
+<p class="a"><b>Thread A</b>I hold lock 1. I'm waiting for lock 2.</p>
+<p class="b"><b>Thread B</b>I hold lock 2. I'm waiting for lock 1.</p>
+<p class="a"><b>Both</b>...(waiting forever)...</p>
+</div>
+<p>Avoid by always taking locks in the <b>same order</b>, using timeouts, or better, <b>not sharing mutable data</b> at all.</p>
+
+<h3>Ways to dodge the whole mess</h3>
+<ul>
+<li><b>Share nothing</b>: each worker has its own data; pass messages through a <b>queue</b>.</li>
+<li><b>Immutable data</b>: can't be changed, so can't be corrupted.</li>
+<li><b>Let the database handle it</b>: one atomic statement beats read-modify-write in your code:
+<pre><code>UPDATE items SET stock = stock - 1 WHERE id = 7 AND stock &gt; 0;   -- no oversell!</code></pre></li>
+<li><b>Job queues</b>: web request returns immediately ("we'll email you"), a background worker does the slow job.</li>
+</ul>
+
+<div class="brain"><b class="t">Brain power</b>Two shoppers buy the last concert ticket at the same millisecond. Why might both succeed if your code does "read stock → check → write stock-1"? <em>Both read stock = 1 before either writes. Use a database transaction with locking or an atomic conditional UPDATE.</em></div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Should I use threads or async?</summary><p>For lots of waiting on I/O (web servers): async is lightweight and popular. For CPU-heavy work: multiple processes. Threads are the middle option when libraries aren't async.</p></details>
+<details class="dumb"><summary>Q: Why is concurrency bug-hunting so hard?</summary><p>Bugs depend on timing, so they appear once in a thousand runs and vanish when you add print statements. Prefer simple designs that avoid shared state.</p></details>
+<details class="dumb"><summary>Q: Python's GIL: what is it?</summary><p>A lock letting only one thread run Python code at a time. Threads still help with I/O waiting, but for CPU-bound work use multiple processes.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: sequential or concurrent?</summary>
+<p>You must download 10 files, each takes 1 second. How long if done one after another? With concurrency (assuming enough bandwidth)?<br><b>Answer:</b> ~10 s sequentially; ~1 s concurrently (the waits overlap). That's why <code>Promise.all</code> / <code>asyncio.gather</code> matter.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Concurrency = juggling many tasks; parallelism = truly simultaneous work on multiple cores.</li>
+<li>I/O-bound → async/threads; CPU-bound → multiple processes.</li>
+<li>Shared mutable data creates race conditions and deadlocks: lock, or avoid sharing.</li>
+<li>Never block the event loop; push slow work to background jobs.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b><b>Concurrency</b> = dealing with many tasks in overlapping time. <b>Parallelism</b> = actually executing at the same instant on multiple CPU cores. Concurrency is about <em>structure</em>, parallelism about <em>hardware</em>.</div>
+
+<h3>Why bother?</h3>
+<p>A web server must handle thousands of clients. Most of the time a request is <b>waiting</b> (for the database, network, disk): <b>I/O-bound</b>. Work that burns CPU (image resize, encryption) is <b>CPU-bound</b>. The solution differs.</p>
+
+<h3>Models</h3>
+<table>
+<tr><th>Model</th><th>Idea</th><th>Notes</th></tr>
+<tr><td>Multi-process</td><td>Separate processes, separate memory</td><td>Strong isolation; use for CPU-bound; communicate via pipes/queues</td></tr>
+<tr><td>Threads</td><td>Multiple flows sharing a process's memory</td><td>Parallel on multicore; shared memory → races</td></tr>
+<tr><td>Event loop / async</td><td>One thread; tasks yield while waiting</td><td>Great for many I/O waits (Node.js, Python asyncio); a blocking call freezes everyone</td></tr>
+</table>
+<p>Python's <b>GIL</b> lets only one thread run Python bytecode at a time: threads help with I/O but not CPU work there.</p>
+
+<h3>Async/await</h3>
+<pre><code>// Sequential: ~2 s
+const a = await fetch("/slow-a");   // wait 1 s
+const b = await fetch("/slow-b");   // wait 1 s
+
+// Concurrent: ~1 s
+const [a, b] = await Promise.all([fetch("/slow-a"), fetch("/slow-b")]);</code></pre>
+<p><code>await</code> means "pause <em>this</em> task, let others run until the result is ready". A <b>Promise/Future</b> represents a value arriving later. <b>Never block the event loop</b> (long loops, sync file reads).</p>
+
+<h3>Shared state problems</h3>
+<ul>
+<li><b>Race condition</b>: result depends on timing. Two threads do <code>counter += 1</code>: both read 5, both write 6. One update lost.</li>
+<li><b>Fix: lock/mutex</b> so only one thread enters the critical section; <b>atomic operations</b>; or avoid sharing (immutable data, message passing, queues).</li>
+<li><b>Deadlock</b>: A waits for B's lock while B waits for A's. Avoid by acquiring locks in a consistent order, using timeouts.</li>
+<li><b>Starvation</b>, and the same problem in databases (two requests updating one row), solved with transactions/locking.</li>
+<li>Races are timing dependent: tests may pass 999 times and fail once. Prefer simple designs.</li>
+</ul>
+
+<h3>Practical advice</h3>
+<ul>
+<li>Use the framework's model (gunicorn workers, Node event loop) before inventing your own.</li>
+<li>Offload slow work to a <b>job queue</b> (Celery, SQS): respond fast, process later.</li>
+<li>Use <b>timeouts</b>, limit concurrency (worker pools), and make retries <b>idempotent</b>.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="21-os.html">← OS</a><a href="23-environments.html">Next: Environments & Config →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Concurrency vs parallelism:",options:["Identical","Concurrency = managing overlapping tasks; parallelism = executing simultaneously on multiple cores","Parallelism is slower","Concurrency needs GPUs"],answer:1,why:"You can have concurrency on one core."},
+{q:"A task that mostly waits on the network is:",options:["CPU-bound","I/O-bound","Memory-bound","Disk-bound only"],answer:1,why:"Async or threads let other work proceed while waiting."},
+{q:"Two threads increment a shared counter and the final value is too low. This is a:",options:["Deadlock","Race condition","Memory leak","Cache miss"],answer:1,why:"Lost updates from interleaved read-modify-write."},
+{q:"What causes a deadlock?",options:["Two tasks each waiting for a lock the other holds","Too much RAM","Slow DNS","Using await"],answer:0,why:"Circular wait."},
+{q:"In a single-threaded event loop, what happens if you run a 5-second CPU loop?",options:["Other requests keep flowing","Everything is blocked until it finishes","It runs on another core","Nothing"],answer:1,why:"Never block the loop; offload CPU work."},
+{q:"`Promise.all([a(), b()])` is useful because:",options:["Runs the calls concurrently and waits for both","It runs them one after another","It cancels errors","It's synchronous"],answer:0,why:"Total time ≈ the slowest, not the sum."},
+{q:"Best way to avoid race conditions where possible?",options:["Add sleep()","Avoid shared mutable state (immutable data, message passing)","More threads","Disable tests"],answer:1,why:"No sharing, no race."},
+{q:"A web request needs to send 10,000 emails. Good approach?",options:["Do it all before responding","Enqueue a background job and respond immediately","Open 10,000 threads","Ignore errors"],answer:1,why:"Job queues decouple slow work from the request."}
+];
+window.THINK=[
+{q:"Two users buy the last item at the same moment. How could both succeed incorrectly and how do you prevent it?",a:"Both read stock=1 then both decrement (race). Use a DB transaction with row locking (<code>SELECT ... FOR UPDATE</code>) or an atomic <code>UPDATE ... SET stock = stock-1 WHERE stock &gt; 0</code> and check rows affected."},
+{q:"Why does adding more threads not always make a program faster?",a:"CPU cores are limited, context switching and lock contention add overhead, and the bottleneck may be elsewhere (database, network)."}
+];
+</script><script src="quiz.js"></script></body></html>

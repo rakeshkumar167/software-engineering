@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>12. HTML, CSS, JavaScript and the DOM</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="12"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>12. HTML, CSS, JavaScript and the DOM</h1>
+<p class="lead">What the browser does with the response your server sent.</p>
+<section class="hf">
+<h2>🏠 Start here: building a house</h2>
+<div class="story"><b class="t">A story</b>
+A web page is like a house:<br>
+🧱 <b>HTML</b> = the <b>structure</b>: walls, doors, rooms ("this is a heading, this is a button, this is a list").<br>
+🎨 <b>CSS</b> = the <b>decoration</b>: paint colours, furniture layout, curtains.<br>
+⚡ <b>JavaScript</b> = the <b>electricity</b>: lights that switch on, doors that open when you press a button.<br><br>
+Three languages, three jobs. Mix them up and things get messy.</div>
+
+<h3>Step 1: HTML, the skeleton</h3>
+<p>HTML uses <b>tags</b> in pairs: an opening tag, content, a closing tag.</p>
+<pre><code>&lt;h1&gt;Ana's Pizza&lt;/h1&gt;                    &lt;!-- big heading --&gt;
+&lt;p&gt;Best slices in town. &lt;a href="/menu"&gt;See menu&lt;/a&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Margherita&lt;/li&gt;
+  &lt;li&gt;Pepperoni&lt;/li&gt;
+&lt;/ul&gt;
+&lt;img src="pizza.jpg" alt="A hot pizza"&gt;     &lt;!-- alt text helps screen readers --&gt;
+&lt;button id="order"&gt;Order now&lt;/button&gt;</code></pre>
+<p>Tags nest like boxes in boxes. That nesting forms a <b>tree</b>:</p>
+<pre class="fig">  html
+  ├── head
+  │    └── title
+  └── body
+       ├── h1 "Ana's Pizza"
+       ├── p ── a "See menu"
+       ├── ul ── li, li
+       └── button "Order now"      ← this tree is called the DOM</pre>
+
+<h3>Step 2: CSS, the paint</h3>
+<p>A CSS rule says <b>which things</b> (selector) get <b>which look</b> (properties).</p>
+<pre><code>h1 { color: tomato; font-family: Georgia, serif; }   /* every h1 */
+.special { background: gold; padding: 8px; }          /* anything with class="special" */
+#order:hover { background: darkred; }                 /* the button, when hovered */</code></pre>
+<p><b>The box model:</b> every element is a box with content, padding (inside cushion), border, and margin (outside gap):</p>
+<pre class="fig">  ┌──────────── margin ──────────────┐
+  │ ┌────────── border ────────────┐ │
+  │ │ ┌──────── padding ─────────┐ │ │
+  │ │ │        CONTENT           │ │ │
+  │ │ └──────────────────────────┘ │ │
+  │ └──────────────────────────────┘ │
+  └──────────────────────────────────┘</pre>
+<p>For layout, use <b>Flexbox</b> (row or column of items) and <b>Grid</b> (rows and columns). <b>Media queries</b> make a page adapt to phones: <code>@media (max-width: 600px) { ... }</code>.</p>
+
+<h3>Step 3: JavaScript, make it alive</h3>
+<pre><code>const button = document.getElementById("order");     // find the element in the DOM
+button.addEventListener("click", function () {       // when clicked...
+  document.querySelector("h1").textContent = "Thanks for ordering!";   // ...change it
+});</code></pre>
+<p>That's it: <b>find an element → listen for an event → change something</b>. Nearly every interactive website is variations on this idea.</p>
+
+<h3>Fetch: talking to the server without reloading</h3>
+<pre><code>button.addEventListener("click", async () =&gt; {
+  const response = await fetch("/api/menu");     // HTTP request (module 4!)
+  const items = await response.json();           // parse JSON (module 11!)
+  document.querySelector("ul").innerHTML = "";
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.textContent = item.name;                  // textContent is safe from XSS
+    document.querySelector("ul").appendChild(li);
+  }
+});</code></pre>
+
+<div class="brain"><b class="t">Brain power</b>You can try all of this <em>right now</em>: open any web page, press <b>F12</b>, click the Console tab and type <code>document.body.style.background = "pink"</code>. You just changed the page's DOM live. (Only on your screen; reload and it's gone.)</div>
+
+<h3>Putting it together: a complete page</h3>
+<pre><code>&lt;!doctype html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;&lt;title&gt;Counter&lt;/title&gt;
+  &lt;style&gt; button { font-size: 1.5rem; padding: 8px 16px; } &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Clicks: &lt;span id="n"&gt;0&lt;/span&gt;&lt;/h1&gt;
+  &lt;button id="btn"&gt;Click me&lt;/button&gt;
+  &lt;script&gt;
+    let count = 0;
+    document.getElementById("btn").addEventListener("click", () =&gt; {
+      count++;
+      document.getElementById("n").textContent = count;
+    });
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+<p>Save it as <code>counter.html</code> and double-click it. You've built a web app.</p>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Do I need React / Vue to build a site?</summary><p>No. Learn plain HTML/CSS/JS first. Frameworks automate the "update the DOM when data changes" chore, and make sense once you've felt that chore yourself.</p></details>
+<details class="dumb"><summary>Q: Is JavaScript the same as Java?</summary><p>No, unrelated. (Naming was a 1990s marketing decision.)</p></details>
+<details class="dumb"><summary>Q: Why use &lt;button&gt; instead of a styled &lt;div&gt;?</summary><p>Semantic tags give free keyboard support, accessibility for screen readers, and meaning to search engines.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: who does what?</summary>
+<p>HTML, CSS or JS? (1) turn the heading red, (2) show a popup when a form is submitted, (3) add a "Contact us" link, (4) put items in two columns.<br><b>Answer:</b> (1) CSS, (2) JS, (3) HTML, (4) CSS (flexbox/grid).</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>HTML = structure, CSS = style, JS = behaviour.</li>
+<li>The browser turns HTML into a tree (the DOM) that JS can read and change.</li>
+<li>JS pattern: find element, listen for event, change the DOM.</li>
+<li><code>fetch</code> calls the server and updates the page without reload.</li>
+<li>Use semantic tags and <code>textContent</code> for safe, accessible pages.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Three languages, three jobs: <b>HTML</b> = structure and content, <b>CSS</b> = presentation, <b>JavaScript</b> = behaviour. The browser turns HTML into a live tree called the <b>DOM</b>.</div>
+
+<h3>HTML</h3>
+<pre><code>&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;title&gt;My page&lt;/title&gt;
+        &lt;link rel="stylesheet" href="style.css"&gt;&lt;/head&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Hello&lt;/h1&gt;
+    &lt;p class="intro"&gt;A &lt;a href="/about"&gt;link&lt;/a&gt;.&lt;/p&gt;
+    &lt;button id="btn"&gt;Click&lt;/button&gt;
+    &lt;script src="app.js"&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+<ul>
+<li><b>Elements</b> are tags with attributes (<code>href</code>, <code>class</code>, <code>id</code>). Use <b>semantic</b> tags (<code>header, nav, main, article, button</code>) for accessibility and SEO.</li>
+<li>Forms: <code>&lt;form method="post" action="/login"&gt;</code> sends an HTTP request (module 4) when submitted.</li>
+</ul>
+
+<h3>CSS</h3>
+<pre><code>.intro { color: #333; font-size: 1.2rem; }
+button:hover { background: royalblue; }
+@media (max-width: 600px) { body { padding: 8px; } }   /* responsive */</code></pre>
+<ul>
+<li><b>Selectors</b> pick elements (tag, <code>.class</code>, <code>#id</code>); <b>cascade + specificity</b> decide which rule wins.</li>
+<li><b>Box model</b>: content → padding → border → margin.</li>
+<li><b>Layout</b>: Flexbox (one dimension), Grid (two dimensions). <b>Responsive</b> design adapts to screen size.</li>
+</ul>
+
+<h3>JavaScript and the DOM</h3>
+<p>The <b>DOM</b> (Document Object Model) is the page as a tree of objects that JavaScript can read and change.</p>
+<pre><code>const btn = document.getElementById("btn");
+btn.addEventListener("click", () =&gt; {
+  document.querySelector(".intro").textContent = "You clicked!";
+});
+
+// Fetching data without reloading the page
+const res = await fetch("/api/users/1");
+const user = await res.json();</code></pre>
+<ul>
+<li><b>Events</b> (click, input, submit) trigger your functions.</li>
+<li><b>fetch</b> makes HTTP requests from the page (AJAX); this is how single-page apps update without reloads.</li>
+<li>Frameworks (React, Vue, Svelte) manage DOM updates declaratively from your data.</li>
+</ul>
+
+<h3>How the browser renders</h3>
+<ol><li>Receive HTML → parse to DOM. 2. Discover CSS/JS/images → request them. 3. Build styles, compute layout. 4. Paint. 5. JS can change the DOM at any time → re-layout/paint.</li></ol>
+<div class="box">Try it: open any page, right-click → <b>Inspect</b>. Edit text in Elements; watch requests in Network. Changes are local to your browser only.</div>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="11-data-formats.html">← Data Formats</a><a href="13-rest-api.html">Next: REST APIs →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Match the jobs: HTML, CSS, JS.",options:["Behaviour, structure, style","Structure, style, behaviour","Style, behaviour, structure","All structure"],answer:1,why:"HTML structure/content; CSS presentation; JS behaviour."},
+{q:"What is the DOM?",options:["A server","A tree of objects representing the page that JS can modify","A CSS framework","A file format"],answer:1,why:"The browser's live in-memory model of the document."},
+{q:"Why use semantic tags like <nav> and <button>?",options:["Looks better automatically","Accessibility, SEO and built-in behaviour","They're faster to download","Required by HTTP"],answer:1,why:"Screen readers and search engines understand meaning; a button is keyboard-accessible by default."},
+{q:"CSS box model order from inside to outside:",options:["margin, border, padding, content","content, padding, border, margin","padding, content, margin, border","content, margin, padding, border"],answer:1,why:"Content, then padding, border, margin."},
+{q:"`fetch('/api/users/1')` in the browser does:",options:["Reloads the page","Makes an HTTP request and returns a promise of the response","Edits the HTML file","Opens DevTools"],answer:1,why:"fetch is the browser's API for HTTP calls from JS."},
+{q:"You edit text in DevTools Elements. Who sees it?",options:["All users","Only you, in your browser until reload","The server","Search engines"],answer:1,why:"It changes your local DOM only."},
+{q:"What is responsive design?",options:["Fast server replies","Layout adapting to screen sizes","Using many colours","Server-side rendering"],answer:1,why:"Media queries, flexible layouts."}
+];
+window.THINK=[
+{q:"A user clicks 'Like'. Describe the steps from click to the count updating, without a page reload.",a:"Event listener runs → JS <code>fetch</code> POSTs to the server → server updates DB and returns JSON (new count) → JS updates the DOM text."},
+{q:"Why can't you trust that data validated in JavaScript in the browser is safe?",a:"Users control their browser and can bypass or modify JS, or send requests directly. Server must re-validate (module 5 and 28)."}
+];
+</script><script src="quiz.js"></script></body></html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>1. What is a Process?</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="01"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>1. What is a Process?</h1>
+<p class="lead">A program is a file on disk. A process is that program <em>running</em>.</p>
+<section class="hf">
+<h2>🍳 Start here: the recipe and the cook</h2>
+<div class="story"><b class="t">A story</b>
+You have a <b>recipe</b> for pancakes in a cookbook. The recipe just sits there. It can't make anything. It's only <em>instructions</em>.<br><br>
+Now you (the cook) take the recipe, get out the bowl, eggs and pan, and actually start cooking. Right now there is a <em>cooking-in-progress</em>: ingredients half mixed, the pan hot, you on step 3 of 7.<br><br>
+That's the difference: the <b>recipe is a program</b>. The <b>cooking-in-progress is a process</b>.</div>
+
+<pre class="fig">  PROGRAM (on disk)               PROCESS (running)
+  ┌──────────────────┐   start    ┌──────────────────────────┐
+  │  chrome.exe      │ ─────────► │ PID 4821                 │
+  │  (just a file)   │            │ memory: tabs, history... │
+  │  instructions    │            │ currently on: step 17    │
+  └──────────────────┘            └──────────────────────────┘</pre>
+
+<h3>Two cooks, one recipe</h3>
+<p>Open Chrome twice. Same recipe, two cooks, two kitchens. Each process gets its <b>own PID</b> (Process ID, like an order number) and its <b>own memory</b>. If one catches fire (crashes), the other kitchen keeps cooking. That's the whole point of a process: <b>isolation</b>.</p>
+
+<div class="brain"><b class="t">Brain power</b>Your laptop has 8 CPU cores but shows 300 running processes. How can 300 things "run at once" on 8 cores? <em>(Think of one chef quickly switching between 300 pots, giving each a few milliseconds. The OS "scheduler" is that chef. It happens so fast you can't see it.)</em></div>
+
+<h3>The life of a process</h3>
+<pre class="fig">  born ──► READY ──► RUNNING ──► WAITING ──► READY ...
+  (a parent          ▲    │        (for disk, network,
+   started it)       │    ▼         keyboard)
+                     └─ scheduler swaps it out
+                                    │
+                                    ▼
+                               DIED (exit code 0 = "all good")</pre>
+<p>Every process has a <b>parent</b> that started it. When you type <code>python app.py</code> in the terminal, the shell (parent) starts a Python process (child).</p>
+
+<h3>Try it right now (2 minutes)</h3>
+<pre><code>$ sleep 300 &amp;          # start a process that does nothing for 5 minutes
+[1] 52311                # ← its PID
+$ ps | grep sleep        # find it
+$ kill 52311             # end it (use YOUR number)</code></pre>
+<p>You just created and killed a process. A web server is exactly the same, except instead of sleeping it <em>waits for visitors</em>.</p>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Is a process the same as an "app"?</summary><p>Close, but one app can use several processes (Chrome uses many). "App" is what users see; "process" is what the OS tracks.</p></details>
+<details class="dumb"><summary>Q: What if I close the window, does the process die?</summary><p>Usually yes, but not always. Background services keep running with no window. That's why servers can run without anyone logged in.</p></details>
+<details class="dumb"><summary>Q: What's a thread then?</summary><p>One cook with several pairs of hands. Threads are workers <em>inside</em> one process, sharing the same kitchen (memory). Faster to start, but two hands grabbing the same salt can collide (bugs!).</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: which are programs, which are processes?</summary>
+<p>(a) <code>/usr/bin/python3</code> sitting on your disk, (b) the Spotify window playing music, (c) a file named <code>server.js</code>, (d) PID 9012 using 200 MB RAM.<br><b>Answer:</b> programs = (a), (c) (code files). Processes = (b), (d) (running things). Note: <code>server.js</code> is source code; it becomes a process only when <code>node server.js</code> runs it.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Program = instructions on disk. Process = program <em>running</em>.</li>
+<li>Each process has its own PID and private memory.</li>
+<li>The OS scheduler switches between processes so fast that they seem simultaneous.</li>
+<li>Web servers are just processes that wait for requests.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A <b>process</b> is a running instance of a program, with its own memory, its own state, and a unique ID (PID) handed out by the operating system (OS).</div>
+
+<h3>Program vs process</h3>
+<table>
+<tr><th>Program</th><th>Process</th></tr>
+<tr><td>Passive: a file (e.g. <code>chrome</code>, <code>python</code>, <code>server.js</code>)</td><td>Active: that file loaded into memory and executing</td></tr>
+<tr><td>One copy on disk</td><td>Many processes can come from one program (open two terminal windows)</td></tr>
+</table>
+
+<h3>What the OS gives each process</h3>
+<ul>
+<li><b>PID</b>: unique number identifying it.</li>
+<li><b>Own memory space</b>: one process cannot normally read another's memory (isolation). Roughly: code, a <em>stack</em> (function calls, local variables) and a <em>heap</em> (dynamically allocated data).</li>
+<li><b>CPU time</b>: the OS <em>scheduler</em> rapidly switches between processes so many appear to run at once.</li>
+<li><b>Resources</b>: open files, network sockets, environment variables, a working directory.</li>
+<li><b>Standard streams</b>: <code>stdin</code>, <code>stdout</code>, <code>stderr</code>.</li>
+</ul>
+
+<h3>Lifecycle</h3>
+<p>Created (usually by another process: a <em>parent</em> starts a <em>child</em>) → ready → running → waiting (e.g. for disk or network) → terminated with an <b>exit code</b> (0 = success by convention).</p>
+
+<h3>Threads</h3>
+<p>A process can contain several <b>threads</b>: independent flows of execution that <em>share</em> the process's memory. Threads are cheaper than processes but sharing memory makes bugs (race conditions) easier.</p>
+
+<h3>Try it</h3>
+<pre><code>ps aux | head        # list processes
+echo $$              # PID of your current shell
+top                  # live view (q to quit)
+sleep 100 &amp;          # start a background process
+kill &lt;PID&gt;           # ask it to stop</code></pre>
+
+<div class="box">Why it matters for web development: a web <b>server is just a long-running process</b> that waits for network requests. If the process crashes, the site is down. "Restart the server" literally means "kill the process and start a new one".</div>
+
+<h2>Check your understanding</h2>
+<div id="quiz"></div>
+<h2>Think it through</h2>
+<div id="think"></div>
+
+<div class="pager"><span></span><a href="02-languages.html">Next: Interpreted vs Compiled →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Which best describes a process?",options:["A file containing source code","A running instance of a program","A type of programming language","A network connection"],answer:1,why:"A program is passive code on disk; a process is that program loaded and executing."},
+{q:"You open the same text editor twice. How many processes are there (at minimum)?",options:["1, they share one","2, each with its own PID","0, editors are not processes","Depends on file size"],answer:1,why:"Each launch creates a new process from the same program, each with its own PID and memory."},
+{q:"What does the OS scheduler do?",options:["Compiles code","Decides which process gets CPU time and when","Assigns IP addresses","Encrypts memory"],answer:1,why:"The scheduler time-slices the CPU among runnable processes."},
+{q:"Why can't a buggy process normally corrupt another process's memory?",options:["It can, always","Each process has isolated memory space enforced by the OS","Memory is read-only","Processes run one at a time"],answer:1,why:"Memory isolation is a core OS protection."},
+{q:"What is the main difference between threads and processes?",options:["Threads share memory of their process; processes are isolated","Threads are slower","Processes can't be started by other processes","There is none"],answer:0,why:"Threads live inside a process and share its memory, which is cheap but risky."},
+{q:"A shell command finishes with exit code 0. This conventionally means:",options:["Failure","Success","Still running","Out of memory"],answer:1,why:"0 = success; non-zero values signal different errors."},
+{q:"A web server is best described as:",options:["A special kind of hardware only","A long-running process that waits for requests","A file on disk","A browser feature"],answer:1,why:"Server software is a normal process that stays alive and listens on a port."}
+];
+window.THINK=[
+{q:"Your site is down and you SSH into the machine. What would you check first about processes?",a:"Whether the server process is still running (<code>ps</code>, <code>top</code>), its exit code or logs (stderr), and whether it ran out of memory."},
+{q:"Why might running 1000 processes be worse than 1000 threads? And why might threads be worse?",a:"Processes cost more memory and context-switch overhead; threads share memory so bugs (race conditions) can corrupt shared data, and one thread crashing can take down the whole process."}
+];
+</script>
+<script src="quiz.js"></script>
+</body></html>

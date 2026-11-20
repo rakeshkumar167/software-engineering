@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>16. Proxies, Load Balancers, CDNs and Caching</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="16"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>16. Proxies, Reverse Proxies, Load Balancers, CDNs and Caching</h1>
+<p class="lead">What sits between the browser and your code, and why.</p>
+<section class="hf">
+<h2>🏬 Start here: the popular shop</h2>
+<div class="story"><b class="t">A story</b>
+Ana's tiny bakery becomes famous. Problems appear:<br>
+😰 One counter, a line down the street. → Open <b>more counters</b> and a person at the door directs customers: that's a <b>load balancer</b>.<br>
+😰 Customers keep asking the baker the same question ("Do you have sourdough?"). → Put a <b>sign in the window</b>: a <b>cache</b>.<br>
+😰 Customers across the country wait days for deliveries. → Open <b>branch shops in each city</b> stocked with the popular items: a <b>CDN</b>.<br>
+😰 The baker wants a <b>receptionist</b> who greets everyone, turns away troublemakers and sends people to the right department: a <b>reverse proxy</b>.</div>
+
+<pre class="fig">                            ┌──────────────┐     ┌─► [ app server 1 ]
+  users ──► internet ──►    │ reverse proxy│ ──► │   [ app server 2 ]  ──► database
+                            │ + load       │     └─► [ app server 3 ]
+                            │ balancer     │
+                            └──────────────┘
+          (HTTPS handled here; static files cached; bad traffic blocked)</pre>
+
+<h3>Reverse proxy: the receptionist</h3>
+<p>A program like <b>Nginx</b> or <b>Caddy</b> sits in front of your app. It can:</p>
+<ul>
+<li>Handle <b>HTTPS</b> so your app doesn't have to.</li>
+<li><b>Route</b>: <code>/api/*</code> → backend app; everything else → static files.</li>
+<li><b>Compress</b> responses, add security headers, rate-limit abusers.</li>
+</ul>
+<pre><code># Tiny Nginx config
+server {
+  listen 443 ssl;
+  server_name shop.example.com;
+  location /api/ { proxy_pass http://localhost:8000; }   # to the app
+  location /     { root /var/www/site; }                  # static files
+}</code></pre>
+<p><b>Forward vs reverse:</b> a <em>forward</em> proxy hides <b>clients</b> (a VPN or school filter). A <em>reverse</em> proxy hides <b>servers</b>.</p>
+
+<h3>Load balancer: the door person</h3>
+<p>Many identical servers; the balancer picks one per request (round-robin, least busy…). It also runs <b>health checks</b>: if server 2 stops answering, it's removed from rotation and nobody notices. This gives both <b>scale</b> and <b>availability</b>.</p>
+<div class="fixit"><b>Gotcha:</b> if "who is logged in" is stored in <em>one server's memory</em>, the next request may land on a different server that has never heard of you, so you're suddenly logged out. Fix: keep servers <b>stateless</b> and store sessions in a shared place (Redis or database).</div>
+
+<h3>CDN: branch shops everywhere</h3>
+<p>A Content Delivery Network keeps copies of your images, CSS and JS on servers around the world. A user in Mumbai gets files from Mumbai instead of from your server in Virginia, cutting delay. (Physics: signals take time to travel.)</p>
+
+<h3>Caching: the sign in the window</h3>
+<p>Doing work once and remembering the answer. Caches exist at every level:</p>
+<pre class="fig">  Browser cache → CDN → Reverse proxy → App cache (Redis) → Database
+  (closest to user = fastest)                     (furthest = slowest)</pre>
+<pre><code>Cache-Control: max-age=86400        # "this is good for 1 day, don't ask again"
+Cache-Control: no-store             # "never keep a copy" (private data!)
+ETag: "v42"  →  next time browser sends  If-None-Match: "v42"
+             →  server: 304 Not Modified (no body: "yours is still fine")</code></pre>
+
+<h3>The hard part: invalidation</h3>
+<p>If the baker's sign says "sourdough available" but it sold out, customers are misled. Caches go <b>stale</b>. Solutions:</p>
+<ul>
+<li><b>TTL</b>: entries expire after a set time.</li>
+<li><b>Cache busting</b>: name files by content: <code>app.3f9a1c.js</code>. New version = new name, so you can cache old names for a year.</li>
+<li><b>Purge</b>: tell the CDN/cache to forget something now.</li>
+</ul>
+
+<div class="brain"><b class="t">Brain power</b>You uploaded a new logo with the same filename, but users still see the old one. List every place the old one might be hiding. <em>Their browser cache, the CDN, the reverse proxy, your app's cache. Fix with versioned filenames or a purge.</em></div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Isn't the load balancer itself a single point of failure?</summary><p>Yes, so in practice it's duplicated too, usually provided as a managed service (cloud load balancers are redundant by design).</p></details>
+<details class="dumb"><summary>Q: How does my app know the user's real IP behind a proxy?</summary><p>The proxy adds it in a header (<code>X-Forwarded-For</code>). Trust that header only when it comes from <em>your own</em> proxy.</p></details>
+<details class="dumb"><summary>Q: Which things should never be cached publicly?</summary><p>Anything personalised (account pages, private data). Mark them <code>private</code> or <code>no-store</code>.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: which tool?</summary>
+<p>(1) Serve images faster to a worldwide audience. (2) Spread traffic over 5 identical servers. (3) Terminate HTTPS and route /api to a backend. (4) Avoid re-running the same expensive database query.<br><b>Answer:</b> (1) CDN, (2) load balancer, (3) reverse proxy, (4) cache (e.g. Redis).</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Reverse proxy = front door (HTTPS, routing, compression, protection).</li>
+<li>Load balancer = spreads requests over many servers and avoids failed ones.</li>
+<li>Stateless servers make scaling easy; share session state externally.</li>
+<li>CDN puts content near users; caching reuses work at every layer.</li>
+<li>Invalidation is the hard part: TTLs, versioned filenames, purges.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Real traffic rarely hits your app directly. It passes through intermediaries that <b>terminate TLS, spread load, cache and protect</b>.</div>
+
+<h3>Forward vs reverse proxy</h3>
+<table>
+<tr><th></th><th>Forward proxy</th><th>Reverse proxy</th></tr>
+<tr><td>Acts for</td><td>The <b>client</b> (company network, VPN)</td><td>The <b>server</b></td></tr>
+<tr><td>Server sees</td><td>The proxy's IP, not the client</td><td>Client hits proxy; backend hidden</td></tr>
+<tr><td>Examples</td><td>Corporate web filter, VPN</td><td>Nginx, HAProxy, Caddy, Cloudflare</td></tr>
+</table>
+<p>A reverse proxy commonly: terminates HTTPS, routes <code>/api</code> to one service and <code>/</code> to another, compresses, rate-limits, adds security headers, and serves static files. The real client IP then arrives in the <code>X-Forwarded-For</code> header.</p>
+
+<h3>Load balancers</h3>
+<p>Spread requests across several identical servers for capacity and <b>availability</b>: if one dies, traffic goes to the others.</p>
+<ul>
+<li><b>Algorithms</b>: round-robin, least connections, hash by client.</li>
+<li><b>Health checks</b> remove broken servers from rotation.</li>
+<li><b>Sticky sessions</b> pin a user to one server. Better: keep servers <b>stateless</b> and store sessions in a shared store (module 5).</li>
+<li><b>Horizontal scaling</b> (more machines) vs vertical (bigger machine).</li>
+</ul>
+
+<h3>CDN: Content Delivery Network</h3>
+<p>A worldwide network of <b>edge servers</b> caching your static files (images, JS, CSS, video) close to users. Lower latency (physics: distance matters), less load on your origin, DDoS absorption. DNS or anycast routing directs users to the nearest edge.</p>
+
+<h3>Caching</h3>
+<p>Store a copy to avoid redoing expensive work. Layers: browser → CDN → reverse proxy → application cache (Redis) → database.</p>
+<pre><code>Cache-Control: public, max-age=86400        # cache a day
+Cache-Control: no-store                     # never cache (sensitive)
+ETag: "v123"   →  client sends  If-None-Match: "v123"
+                  server replies 304 Not Modified (no body)</code></pre>
+<ul>
+<li><b>Cache hit/miss</b>, <b>TTL</b> (how long valid), <b>invalidation</b> (when data changes).</li>
+<li>"There are only two hard things in computer science: cache invalidation and naming things."</li>
+<li><b>Cache busting</b>: filenames with a content hash (<code>app.3f9a1c.js</code>) so new versions load immediately and old ones can be cached for a year.</li>
+<li>Never cache personalised or private responses in shared caches (<code>private</code>/<code>no-store</code>).</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="15-transport.html">← Transport</a><a href="17-modern-auth.html">Next: OAuth, JWT, MFA →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"A reverse proxy acts on behalf of:",options:["Clients","Servers","DNS","ISPs"],answer:1,why:"Clients talk to it as if it were the server."},
+{q:"What does a load balancer provide?",options:["Distributes requests over several servers and detects failures","Encrypts passwords","Compiles code","Assigns domain names"],answer:0,why:"Scale and availability."},
+{q:"Why are stateless app servers easier to scale?",options:["Any server can handle any request","They use no memory","They need no network","They never fail"],answer:0,why:"No request depends on which server saw the previous one."},
+{q:"A CDN improves speed mainly by:",options:["Compressing databases","Serving cached content from locations near the user","Using bigger servers","Removing DNS"],answer:1,why:"Shorter distance, lower latency, less origin load."},
+{q:"Response header `Cache-Control: no-store` means:",options:["Cache for a year","Do not keep a copy anywhere","Cache only on CDN","Compress"],answer:1,why:"Use for sensitive responses."},
+{q:"HTTP 304 Not Modified means:",options:["The server crashed","Your cached copy is still valid; no body is sent","Page moved","Forbidden"],answer:1,why:"A conditional request with ETag/If-None-Match succeeded cheaply."},
+{q:"Why put a hash in a filename like app.3f9a1c.js?",options:["Security","Cache busting: new content gets a new URL","Compression","Fun"],answer:1,why:"Allows very long caching without stale files."},
+{q:"Behind a reverse proxy, how can the app find the real client IP?",options:["It cannot","From headers like X-Forwarded-For (set by the trusted proxy)","From DNS","From cookies"],answer:1,why:"The TCP peer is the proxy; only trust the header if it comes from your proxy."}
+];
+window.THINK=[
+{q:"You deploy a new logo but some users still see the old one. List possible caches.",a:"Browser cache, CDN edge, reverse proxy, even DNS for the image host. Fix with versioned filenames, purge CDN, lower max-age for non-hashed assets."},
+{q:"What could go wrong if a CDN caches /account/profile?",a:"One user's private page could be served to others. Mark personalised responses <code>Cache-Control: private</code> or <code>no-store</code> and vary correctly."}
+];
+</script><script src="quiz.js"></script></body></html>

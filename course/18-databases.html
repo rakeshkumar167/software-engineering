@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>18. Databases</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="18"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>18. Databases: SQL, Indexes, Transactions, NoSQL</h1>
+<p class="lead">Where applications keep data that must outlive the process.</p>
+<section class="hf">
+<h2>🗄️ Start here: the library's filing room</h2>
+<div class="story"><b class="t">A story</b>
+Your program's memory is a whiteboard: wipe it (stop the program) and everything is gone. For anything that must last (customers, orders, photos) you need a <b>filing room</b> with a strict <b>librarian</b> who:<br>
+📂 stores records neatly in labelled cabinets (<b>tables</b>),<br>
+🔎 finds anything quickly using an index card system (<b>indexes</b>),<br>
+🤝 lets many people use it at once without messing each other up (<b>transactions</b>),<br>
+🔒 and never loses a record, even if the power goes out (<b>durability</b>).<br><br>
+That librarian is a <b>database</b>: a separate program (PostgreSQL, MySQL, SQLite, ...) your app talks to.</div>
+
+<h3>Tables: think spreadsheets that follow rules</h3>
+<pre class="fig">  users                                    orders
+  ┌────┬───────┬───────────────┐           ┌────┬─────────┬───────┐
+  │ id │ name  │ email         │           │ id │ user_id │ total │
+  ├────┼───────┼───────────────┤           ├────┼─────────┼───────┤
+  │  1 │ Ana   │ ana@x.com     │◄──────────│ 10 │    1    │ 25.00 │
+  │  2 │ Ben   │ ben@x.com     │◄──────────│ 11 │    2    │ 12.50 │
+  └────┴───────┴───────────────┘     ◄─────│ 12 │    1    │ 40.00 │
+   id = PRIMARY KEY (unique label)         user_id = FOREIGN KEY (points to users.id)</pre>
+<p>Instead of copying Ana's name onto every order, orders just point to her <code>id</code>. Update her name once and every order is right. This is <b>normalisation</b>.</p>
+
+<h3>SQL: the language of questions</h3>
+<p>SQL reads almost like English. The four everyday verbs (CRUD):</p>
+<pre><code>INSERT INTO users (name, email) VALUES ('Cy', 'cy@x.com');       -- Create
+SELECT name, email FROM users WHERE id = 1;                      -- Read
+UPDATE users SET name = 'Ana B.' WHERE id = 1;                   -- Update
+DELETE FROM users WHERE id = 2;                                  -- Delete  (⚠ always use WHERE!)</code></pre>
+<p><b>JOIN</b> glues related tables back together:</p>
+<pre><code>SELECT users.name, SUM(orders.total) AS spent
+FROM users
+JOIN orders ON orders.user_id = users.id     -- match rows via the key
+GROUP BY users.name
+ORDER BY spent DESC;
+
+--  name | spent
+--  Ana  | 65.00
+--  Ben  | 12.50</code></pre>
+<div class="fixit"><b>Classic disaster:</b> <code>DELETE FROM users;</code> (no WHERE) deletes <em>everyone</em>. Write the <code>WHERE</code> first, or run it as a <code>SELECT</code> first to see what would match.</div>
+
+<h3>Indexes: the book's index</h3>
+<p>Without one, finding <code>email = 'ana@x.com'</code> in 10 million rows means reading all of them. With an index (a sorted lookup structure) it takes ~25 steps.</p>
+<pre><code>CREATE INDEX idx_users_email ON users (email);</code></pre>
+<p>Trade-off: indexes take space and slow down writes a little. Index the columns you search, join or sort by.</p>
+
+<h3>Transactions: all or nothing</h3>
+<p>Sending 100 from Ana to Ben is two steps. What if the power dies between them? A <b>transaction</b> groups steps so either both happen or neither does:</p>
+<pre><code>BEGIN;
+UPDATE accounts SET balance = balance - 100 WHERE owner = 'Ana';
+UPDATE accounts SET balance = balance + 100 WHERE owner = 'Ben';
+COMMIT;        -- both saved. (ROLLBACK would cancel both.)</code></pre>
+<p>Remember <b>ACID</b>: <b>A</b>tomic (all-or-nothing), <b>C</b>onsistent (rules always hold), <b>I</b>solated (people don't see each other's half-done work), <b>D</b>urable (saved means saved).</p>
+
+<h3>The #1 security rule: never paste user input into SQL</h3>
+<pre><code># 😱 DANGEROUS (SQL injection)
+name = request.args["name"]               # attacker sends:  x' OR '1'='1
+cur.execute("SELECT * FROM users WHERE name = '" + name + "'")   # returns EVERY user!
+
+# ✅ SAFE: placeholders keep data separate from code
+cur.execute("SELECT * FROM users WHERE name = %s", (name,))</code></pre>
+
+<h3>Try it in 2 minutes (SQLite, no install on most computers)</h3>
+<pre><code>$ sqlite3 demo.db
+sqlite&gt; CREATE TABLE pets (id INTEGER PRIMARY KEY, name TEXT, species TEXT);
+sqlite&gt; INSERT INTO pets (name, species) VALUES ('Rex','dog'), ('Tom','cat');
+sqlite&gt; SELECT * FROM pets WHERE species = 'cat';
+2|Tom|cat</code></pre>
+
+<h3>SQL vs NoSQL in one breath</h3>
+<ul>
+<li><b>SQL (relational)</b>: structured tables, relationships, strong guarantees. <em>Start here by default (PostgreSQL).</em></li>
+<li><b>Document</b> (MongoDB): flexible JSON-like records.</li>
+<li><b>Key-value</b> (Redis): lightning-fast lookups, caches, sessions.</li>
+<li><b>Graph</b> (Neo4j): relationship-heavy data (social networks).</li>
+</ul>
+
+<div class="brain"><b class="t">Brain power</b>A page showing 20 orders makes 21 database queries: one for orders, then one per order to fetch its customer. What's this called and the fix? <em>The "N+1 query problem". Fix with one JOIN, or eager loading in your ORM.</em></div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Why not just store data in a JSON file?</summary><p>Fine for tiny things. But a file can't safely handle many simultaneous writers, fast searches over millions of records, or crash-safety. Databases solve all three.</p></details>
+<details class="dumb"><summary>Q: What's an ORM?</summary><p>A library that lets you use classes/objects instead of writing SQL by hand. Convenient, but understand the SQL it generates.</p></details>
+<details class="dumb"><summary>Q: What are migrations?</summary><p>Versioned scripts that change your database structure (add a column) the same way for every developer and environment, like git for the schema.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: write the SQL</summary>
+<p>Using the <code>pets</code> table: (1) list all dogs (2) change Tom's species to "lion" (3) count how many pets there are.<br><b>Answer:</b><pre><code>SELECT * FROM pets WHERE species = 'dog';
+UPDATE pets SET species = 'lion' WHERE name = 'Tom';
+SELECT COUNT(*) FROM pets;</code></pre></p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Databases keep data durable, searchable and safe under concurrency.</li>
+<li>Tables + keys + JOINs model relationships without duplicating data.</li>
+<li>Indexes make searches fast; transactions make multi-step changes all-or-nothing.</li>
+<li>Always use parameterised queries to prevent SQL injection.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A process's memory vanishes when it stops (module 1). A <b>database</b> is a separate program that stores data durably, lets many clients query it safely at once, and keeps it consistent.</div>
+
+<h3>Relational databases (SQL)</h3>
+<p>Data lives in <b>tables</b> (rows and columns) with a fixed <b>schema</b>. Tables relate via <b>keys</b>. Examples: PostgreSQL, MySQL, SQLite.</p>
+<pre><code>users:  id (PK) | name | email
+orders: id (PK) | user_id (FK → users.id) | total | created_at
+
+CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE);
+
+INSERT INTO users (name, email) VALUES ('Ana', 'ana@example.com');
+SELECT name, email FROM users WHERE id = 42;
+UPDATE users SET name = 'Ana B' WHERE id = 42;
+DELETE FROM users WHERE id = 42;
+
+-- JOIN: combine tables
+SELECT u.name, SUM(o.total) AS spent
+FROM users u JOIN orders o ON o.user_id = u.id
+GROUP BY u.name ORDER BY spent DESC LIMIT 10;</code></pre>
+<ul>
+<li><b>Primary key</b>: unique row identifier. <b>Foreign key</b>: reference enforcing relationships.</li>
+<li><b>Normalisation</b>: store each fact once (don't copy the customer's address into every order).</li>
+<li><b>Constraints</b> (NOT NULL, UNIQUE, FK) keep bad data out.</li>
+</ul>
+
+<h3>Indexes</h3>
+<p>Like a book's index: without one the DB scans every row (O(n)); with a B-tree index on a column it finds rows in O(log n). Cost: extra storage and slower writes. Index columns used in <code>WHERE</code>, <code>JOIN</code>, <code>ORDER BY</code>. <code>EXPLAIN</code> shows the plan.</p>
+<pre><code>CREATE INDEX idx_orders_user ON orders (user_id);</code></pre>
+
+<h3>Transactions and ACID</h3>
+<p>A <b>transaction</b> groups steps so they succeed or fail together (transfer money: debit + credit).</p>
+<pre><code>BEGIN;
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT;      -- or ROLLBACK on error</code></pre>
+<table>
+<tr><th>ACID</th><th>Meaning</th></tr>
+<tr><td>Atomicity</td><td>All or nothing</td></tr>
+<tr><td>Consistency</td><td>Constraints always hold</td></tr>
+<tr><td>Isolation</td><td>Concurrent transactions don't see each other's half-finished work</td></tr>
+<tr><td>Durability</td><td>Once committed, survives crashes</td></tr>
+</table>
+
+<h3>NoSQL</h3>
+<table>
+<tr><th>Type</th><th>Examples</th><th>Fits</th></tr>
+<tr><td>Document</td><td>MongoDB</td><td>Flexible JSON-like records</td></tr>
+<tr><td>Key-value</td><td>Redis, DynamoDB</td><td>Caches, sessions, very fast lookups</td></tr>
+<tr><td>Wide column</td><td>Cassandra</td><td>Massive write-heavy scale</td></tr>
+<tr><td>Graph</td><td>Neo4j</td><td>Relationship-heavy data</td></tr>
+</table>
+<p>Trade-offs: flexibility and horizontal scale vs. weaker joins/consistency guarantees. Default advice: <b>start with PostgreSQL</b>.</p>
+
+<h3>Using a database safely from code</h3>
+<ul>
+<li><b>SQL injection</b>: never build queries by pasting user input into strings. Use <b>parameterised queries</b>.
+<pre><code># BAD:  cur.execute("SELECT * FROM users WHERE name = '" + name + "'")
+# GOOD:
+cur.execute("SELECT * FROM users WHERE name = %s", (name,))</code></pre></li>
+<li>An <b>ORM</b> (SQLAlchemy, Prisma) maps tables to objects; beware the "N+1 query" problem.</li>
+<li><b>Migrations</b> version your schema changes. Back up; test restores. Least-privilege DB accounts.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="17-modern-auth.html">← Modern Auth</a><a href="19-backend.html">Next: Backend Frameworks →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Why keep data in a database rather than in a server variable?",options:["Variables are slower","Memory is lost when the process stops; DB is durable and shared","Databases are free","Variables can't hold text"],answer:1,why:"Persistence and shared access across processes/servers."},
+{q:"A foreign key:",options:["Encrypts a column","References a row in another table to enforce relationships","Speeds all queries","Is a password"],answer:1,why:"e.g. orders.user_id → users.id."},
+{q:"What does an index do?",options:["Makes lookups faster at the cost of storage and slower writes","Backs up data","Encrypts rows","Removes duplicates"],answer:0,why:"Like a book index; avoids scanning the whole table."},
+{q:"Atomicity means:",options:["Data is small","A transaction is all-or-nothing","Rows are unique","Data is encrypted"],answer:1,why:"Prevents half-completed transfers."},
+{q:"Which code prevents SQL injection?",options:["String concatenation of input","Parameterised queries","Hiding the form","Using GET"],answer:1,why:"Parameters keep data separate from SQL code."},
+{q:"A cache of sessions needing very fast key lookups suits:",options:["Key-value store like Redis","Graph DB","Spreadsheet","Data warehouse"],answer:0,why:"In-memory key-value is ideal."},
+{q:"What does JOIN do?",options:["Combines rows from tables based on related columns","Deletes rows","Creates indexes","Sorts"],answer:0,why:"Relational power."},
+{q:"Which statement about NoSQL is most accurate?",options:["Always faster","Different trade-offs: flexibility/scale vs joins and consistency","Can't store data","Replaced SQL"],answer:1,why:"Choose for your access patterns; SQL is a strong default."}
+];
+window.THINK=[
+{q:"A query on a 10-million-row table is slow. What do you check?",a:"<code>EXPLAIN</code> the query; is there an index on filtered/joined columns? Are you selecting too many columns/rows? N+1 queries? Missing pagination?"},
+{q:"Why is it a bad idea to store the customer's name in every order row?",a:"Duplicated data can become inconsistent when changed (update anomaly). Store once in <code>customers</code> and reference by ID, unless you intentionally want a historical snapshot."}
+];
+</script><script src="quiz.js"></script></body></html>

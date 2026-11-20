@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>9. Data Structures and Algorithms</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="09"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>9. Data Structures and Algorithms Basics</h1>
+<p class="lead">Choosing how to store data and how to process it efficiently.</p>
+<section class="hf">
+<h2>📚 Start here: the messy bookshelf</h2>
+<div class="story"><b class="t">A story</b>
+Your friend has 10,000 books in a pile. "Find <em>Dune</em>," you say. They dig through the pile, one book at a time. That takes ages.<br><br>
+Now another friend has the books <b>sorted alphabetically</b>. To find <em>Dune</em> they open the middle: "M... too far, D is earlier." Open the middle of the first half: "G... too far." In about <b>14 steps</b> they find it among 10,000 books.<br><br>
+Same books. Same goal. Different <b>organisation</b>. That's what data structures and algorithms are about: <b>how you arrange data</b> and <b>what steps you follow</b>.</div>
+
+<h3>Meet the toolbox (with real-life versions)</h3>
+<table>
+<tr><th>Structure</th><th>Real-life picture</th><th>Use it when</th></tr>
+<tr><td>List / array</td><td>A numbered row of lockers</td><td>You need order and "item #5"</td></tr>
+<tr><td>Dictionary (hash map)</td><td>A phone book: name → number</td><td>You look things up by a key. <b>Super fast.</b></td></tr>
+<tr><td>Set</td><td>A guest list: is "Ana" on it? (no duplicates)</td><td>Membership checks, removing duplicates</td></tr>
+<tr><td>Stack</td><td>A stack of plates (last on, first off)</td><td>Undo, back button</td></tr>
+<tr><td>Queue</td><td>A line at the shop (first in, first out)</td><td>Tasks waiting their turn</td></tr>
+<tr><td>Tree</td><td>Family tree / folders in folders</td><td>Hierarchies</td></tr>
+<tr><td>Graph</td><td>Map of cities and roads / friends on social media</td><td>Connections and routes</td></tr>
+</table>
+<pre class="fig">  STACK (undo)         QUEUE (print jobs)         DICT (lookup)
+   ┌─────┐ ◄ push/pop    in ► [A][B][C] ► out       "ana"  → 555-0101
+   │  C  │                (join at back, leave front) "ben"  → 555-0202
+   │  B  │                                            "cy"   → 555-0303
+   │  A  │</pre>
+
+<h3>Big-O: how does the work grow when the data grows?</h3>
+<p>Don't time your code in seconds; ask "<em>if I have 10× more data, how much slower?</em>"</p>
+<table>
+<tr><th>Name</th><th>10 items</th><th>1,000,000 items</th><th>Picture</th></tr>
+<tr><td>O(1) constant</td><td>1 step</td><td>1 step</td><td>Open the locker whose number you know</td></tr>
+<tr><td>O(log n)</td><td>~3 steps</td><td>~20 steps</td><td>Sorted bookshelf, halving each time</td></tr>
+<tr><td>O(n) linear</td><td>10</td><td>1,000,000</td><td>Checking every book in the pile</td></tr>
+<tr><td>O(n²) quadratic</td><td>100</td><td>1,000,000,000,000</td><td>Everyone shakes hands with everyone</td></tr>
+</table>
+
+<h3>Two searches, side by side</h3>
+<pre><code># Pile method: check each one. O(n)
+def find(books, target):
+    for i, b in enumerate(books):
+        if b == target:
+            return i
+    return -1
+
+# Sorted-shelf method: halve each time. O(log n). Needs SORTED data!
+def bsearch(books, target):
+    lo, hi = 0, len(books) - 1
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        if books[mid] == target: return mid
+        if books[mid] &lt; target: lo = mid + 1     # throw away left half
+        else:                   hi = mid - 1     # throw away right half
+    return -1</code></pre>
+
+<div class="brain"><b class="t">Brain power</b>You must check whether 100,000 incoming usernames already exist among 100,000 stored ones. With two nested loops that's 10 billion comparisons. What single change makes it ~100,000? <em>Put the stored usernames in a <b>set</b> (or dict); each membership check becomes O(1).</em></div>
+
+<h3>The classic speed-up</h3>
+<pre><code># SLOW: for each name, scan the whole list → O(n²)
+for name in new_names:
+    if name in old_list:        # list scan!
+        print("taken", name)
+
+# FAST: build a set once → O(n)
+old_set = set(old_list)
+for name in new_names:
+    if name in old_set:         # instant lookup
+        print("taken", name)</code></pre>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: How does a dictionary find things so quickly?</summary><p>A <b>hash function</b> turns the key ("ana") into a number that points directly to a storage slot. No searching, just jump there. (Like a coat-check: your ticket number tells them exactly which hook.)</p></details>
+<details class="dumb"><summary>Q: Should I always optimise?</summary><p>No. For 20 items, any approach is instant. Write clear code first, <em>measure</em>, optimise the part that is actually slow.</p></details>
+<details class="dumb"><summary>Q: Do I need to memorise sorting algorithms?</summary><p>Not to write apps; just use the language's built-in <code>sort()</code> (it's O(n log n)). Do understand why some approaches get dramatically slower with more data.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: pick the structure</summary>
+<p>(1) Browser "back" button history. (2) Check if a coupon code was already used. (3) Customers waiting for support in order. (4) Map a country code like "IN" to a country name.<br><b>Answer:</b> (1) stack, (2) set, (3) queue, (4) dictionary.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>The same data, organised differently, can be thousands of times faster to use.</li>
+<li>Know the toolbox: list, dict, set, stack, queue, tree, graph.</li>
+<li>Big-O describes how work <em>grows</em> with data size: O(1) &lt; O(log n) &lt; O(n) &lt; O(n²).</li>
+<li>Dicts and sets give near-instant lookups; avoid nested loops over big lists.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A <b>data structure</b> organises data; an <b>algorithm</b> is a step-by-step procedure. The right pair can make a program 1000× faster.</div>
+
+<h3>Core data structures</h3>
+<table>
+<tr><th>Structure</th><th>Idea</th><th>Good at</th><th>Slow at</th></tr>
+<tr><td>Array / list</td><td>Ordered, indexed</td><td>Access by index, append</td><td>Search unsorted, insert in the middle</td></tr>
+<tr><td>Linked list</td><td>Nodes pointing to next</td><td>Insert/remove at known spot</td><td>Random access</td></tr>
+<tr><td>Hash map / dict</td><td>Key → value via hash</td><td>Lookup, insert ~instant</td><td>Ordered traversal</td></tr>
+<tr><td>Set</td><td>Unique items</td><td>Membership test, dedupe</td><td>Indexing</td></tr>
+<tr><td>Stack</td><td>Last in, first out</td><td>Undo, call stack, parsing</td><td></td></tr>
+<tr><td>Queue</td><td>First in, first out</td><td>Task lines, BFS</td><td></td></tr>
+<tr><td>Tree</td><td>Hierarchy (e.g. folders, DOM, BST)</td><td>Hierarchical data, sorted search</td><td></td></tr>
+<tr><td>Graph</td><td>Nodes + edges</td><td>Networks, maps, relationships</td><td></td></tr>
+</table>
+
+<h3>Big-O: how cost grows with input size n</h3>
+<table>
+<tr><th>Notation</th><th>Name</th><th>Example</th></tr>
+<tr><td>O(1)</td><td>Constant</td><td>Dict lookup, array index</td></tr>
+<tr><td>O(log n)</td><td>Logarithmic</td><td>Binary search</td></tr>
+<tr><td>O(n)</td><td>Linear</td><td>Scan a list</td></tr>
+<tr><td>O(n log n)</td><td>Linearithmic</td><td>Good sorting (merge sort)</td></tr>
+<tr><td>O(n²)</td><td>Quadratic</td><td>Nested loops over same list</td></tr>
+</table>
+<p>For n = 1,000,000: O(n) is ~1M steps, O(n²) is ~1 trillion. Big-O ignores constants; it tells you what <em>scales</em>.</p>
+
+<h3>Classic algorithms</h3>
+<pre><code># Linear search: O(n)
+def find(xs, target):
+    for i, x in enumerate(xs):
+        if x == target: return i
+    return -1
+
+# Binary search on a SORTED list: O(log n)
+def bsearch(xs, t):
+    lo, hi = 0, len(xs) - 1
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        if xs[mid] == t: return mid
+        if xs[mid] &lt; t: lo = mid + 1
+        else: hi = mid - 1
+    return -1</code></pre>
+<ul>
+<li><b>Sorting</b>: use the built-in; know that good sorts are O(n log n).</li>
+<li><b>Duplicates?</b> Putting items in a set turns an O(n²) comparison into O(n).</li>
+<li><b>Space-time trade-off</b>: caching/memoising uses memory to save time.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="08-programming.html">← Fundamentals</a><a href="10-debugging.html">Next: Debugging →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Which structure gives near-instant lookup by key?",options:["Linked list","Hash map","Queue","Stack"],answer:1,why:"Hash maps compute where a key lives: O(1) on average."},
+{q:"Undo functionality maps naturally to a:",options:["Queue","Stack","Set","Tree"],answer:1,why:"Last action is first to be undone: LIFO."},
+{q:"A print server handles jobs in the order received. Use a:",options:["Stack","Queue","Set","Graph"],answer:1,why:"FIFO."},
+{q:"What is the Big-O of scanning an unsorted list for a value?",options:["O(1)","O(log n)","O(n)","O(n²)"],answer:2,why:"Worst case you inspect every element."},
+{q:"Binary search requires:",options:["A sorted collection","A hash map","A graph","Nothing"],answer:0,why:"It halves the search range each step, which only works if data is ordered."},
+{q:"Two nested loops over the same list of n items is typically:",options:["O(n)","O(n²)","O(log n)","O(1)"],answer:1,why:"n × n operations."},
+{q:"Checking 'have I seen this ID before?' for a million items repeatedly. Best choice?",options:["List and scan","Set","Sorted file","Stack"],answer:1,why:"Set membership is O(1) on average vs O(n) for a list."},
+{q:"A file system with folders inside folders is a:",options:["Tree","Stack","Queue","Array"],answer:0,why:"Hierarchical parent-child structure."}
+];
+window.THINK=[
+{q:"Your page takes 10 s with 10,000 users and 40 s with 20,000. What Big-O does that suggest and what would you look for?",a:"Doubling input quadruples time: O(n²). Look for nested loops or repeated list scans; replace with a dict/set or better algorithm."},
+{q:"When might a simple O(n²) approach be perfectly fine?",a:"When n is small and bounded (e.g. 20 items); clarity beats optimisation. Measure before optimising."}
+];
+</script><script src="quiz.js"></script></body></html>

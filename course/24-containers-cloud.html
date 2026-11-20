@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>24. Containers, Deployment and Cloud</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="24"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>24. Containers (Docker), Deployment and Cloud Basics</h1>
+<p class="lead">Packaging an app so it runs the same everywhere, and putting it on someone else's computers.</p>
+<section class="hf">
+<h2>📦 Start here: the shipping container</h2>
+<div class="story"><b class="t">A story</b>
+Before 1956, loading a ship meant handling barrels, sacks and crates of every shape: slow and chaotic. Then someone invented the <b>standard shipping container</b>. Any cargo goes inside; cranes, trucks and ships handle <em>the box</em> without caring what's in it.<br><br>
+Software had the same chaos: "It works on my laptop but not on the server, because the Python version differs!" A <b>software container</b> (Docker) packs your app <em>and everything it needs</em> into one standard box that runs identically on your laptop, a colleague's, and the cloud.</div>
+
+<pre class="fig">  Without containers                    With containers
+  laptop:  Python 3.9, lib v1           ┌─ container ─────────┐   same box runs on:
+  server:  Python 3.12, lib v2   💥      │ app + Python 3.12    │ ─► laptop ✅
+  (different, so bugs appear)            │ + exact libraries    │ ─► CI server ✅
+                                         └──────────────────────┘ ─► cloud ✅</pre>
+
+<h3>Image vs container (module 1 echoes!)</h3>
+<table>
+<tr><th>Docker word</th><th>Meaning</th><th>Analogy</th></tr>
+<tr><td><b>Image</b></td><td>Read-only template with your app + dependencies</td><td>A recipe / program on disk</td></tr>
+<tr><td><b>Container</b></td><td>A running instance of an image (an isolated <em>process</em>)</td><td>A cook cooking / a running process</td></tr>
+<tr><td><b>Registry</b></td><td>Store for images (Docker Hub, ECR)</td><td>A cookbook library</td></tr>
+</table>
+<p><b>Container vs VM:</b> a VM carries a whole guest operating system (heavy, minutes to boot). A container shares the host's kernel and bundles only the app's libraries: megabytes, starts in a second.</p>
+
+<h3>Write a Dockerfile: the recipe for your box</h3>
+<pre><code># Dockerfile
+FROM python:3.12-slim              # 1. start from an image that has Python
+WORKDIR /app                       # 2. work inside /app
+COPY requirements.txt .            # 3. copy ONLY the dependency list first
+RUN pip install -r requirements.txt   #    install (this layer gets cached!)
+COPY . .                           # 4. then copy your code
+EXPOSE 8000                        # 5. documentation: app uses port 8000
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]   # 6. how to start</code></pre>
+<pre><code>$ docker build -t pet-shop:1.0 .                       # make the image
+$ docker run -p 8080:8000 -e DATABASE_URL=... pet-shop:1.0
+$ curl localhost:8080                                   # host port 8080 → container 8000
+$ docker ps          # running containers
+$ docker logs &lt;id&gt;   # what is it saying?
+$ docker stop &lt;id&gt;</code></pre>
+<div class="brain"><b class="t">Brain power</b>Why copy <code>requirements.txt</code> and install <em>before</em> copying the rest of the code? <em>Docker caches each step. If only your code changed, the slow install step is reused from cache and the rebuild takes seconds.</em></div>
+
+<h3>Three gotchas every beginner hits</h3>
+<div class="fixit">
+1️⃣ <b>Can't reach the app?</b> Inside a container <code>127.0.0.1</code> means "this container only". Listen on <code>0.0.0.0</code>.<br>
+2️⃣ <b>Data vanished?</b> A container's filesystem is disposable. Use <b>volumes</b> or a separate database for anything permanent.<br>
+3️⃣ <b>Secrets in the image?</b> Anyone with the image can extract them. Pass secrets at runtime (<code>-e</code> / platform secrets).</div>
+
+<h3>Docker Compose: a whole stack with one command</h3>
+<pre><code># docker-compose.yml
+services:
+  web:
+    build: .
+    ports: ["8080:8000"]
+    environment:
+      DATABASE_URL: postgres://app:pw@db/shop
+    depends_on: [db]
+  db:
+    image: postgres:16
+    environment: { POSTGRES_PASSWORD: pw, POSTGRES_USER: app, POSTGRES_DB: shop }
+    volumes: [dbdata:/var/lib/postgresql/data]
+volumes: { dbdata: {} }
+# run everything:   docker compose up</code></pre>
+
+<h3>The cloud: renting someone else's computers</h3>
+<table>
+<tr><th>You manage…</th><th>Type</th><th>Examples</th><th>Analogy</th></tr>
+<tr><td>OS and up</td><td>IaaS (virtual machines)</td><td>EC2, Compute Engine</td><td>Rent an empty kitchen</td></tr>
+<tr><td>Just your app</td><td>PaaS</td><td>Render, Heroku, App Engine, Cloud Run</td><td>Rent a kitchen with a chef's tools set up</td></tr>
+<tr><td>Just functions</td><td>Serverless</td><td>AWS Lambda</td><td>Order catering; pay per meal</td></tr>
+<tr><td>Nothing</td><td>SaaS</td><td>Gmail, Slack</td><td>Eat at a restaurant</td></tr>
+</table>
+<p>Key building blocks: <b>compute</b>, <b>object storage</b> (S3), <b>managed database</b>, <b>networks + firewalls</b>, <b>load balancers</b>, <b>DNS</b>, <b>IAM</b> (who may do what). Spread across multiple <b>zones</b> so one data-centre fire doesn't take you down. <b>Set a budget alert</b>: forgotten resources keep billing!</p>
+
+<h3>Deploying without scaring your users</h3>
+<pre class="fig">  Rolling:     replace servers one by one
+  Blue-green:  [BLUE: current] ◄─ users       build GREEN on the side, test it,
+               [GREEN: new]                    then flip traffic ─► GREEN (flip back = instant rollback)
+  Canary:      5% of users ► new version, 95% ► old.  Watch metrics. Then 25%… 100%.</pre>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Do I need Kubernetes?</summary><p>Probably not at first. It runs and heals many containers across many machines, but it's complex. Start with one container on a managed platform.</p></details>
+<details class="dumb"><summary>Q: Is a container a security boundary?</summary><p>A decent one, but weaker than a VM since the kernel is shared. Run as non-root, use trusted base images, keep them updated.</p></details>
+<details class="dumb"><summary>Q: "Serverless" has servers?</summary><p>Of course; you just don't see or manage them.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: debug the container</summary>
+<p><code>docker run -p 8080:8000 app</code> starts fine, but <code>curl localhost:8080</code> is refused. The app prints "Listening on 127.0.0.1:8000". Why?<br><b>Answer:</b> it binds to the container's own loopback, so the port mapping can't reach it. Make it listen on <code>0.0.0.0:8000</code>.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Container = app + dependencies in an isolated, portable box; image = template, container = running instance.</li>
+<li>Dockerfile builds images; order steps for caching; containers are ephemeral (use volumes/databases).</li>
+<li>Compose runs multi-service stacks locally.</li>
+<li>Cloud: IaaS → PaaS → serverless → SaaS = less to manage. Watch costs.</li>
+<li>Deploy safely: rolling, blue-green, canary, and always keep a rollback.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A <b>container</b> packages your app with its dependencies and runs as an <b>isolated process</b> sharing the host's kernel. It is lighter than a virtual machine and answers "works on my machine".</div>
+
+<h3>Container vs VM</h3>
+<table>
+<tr><th></th><th>Virtual machine</th><th>Container</th></tr>
+<tr><td>Includes</td><td>Full guest OS + app</td><td>App + libraries only</td></tr>
+<tr><td>Startup</td><td>Minutes</td><td>Seconds or less</td></tr>
+<tr><td>Size</td><td>GBs</td><td>MBs</td></tr>
+<tr><td>Isolation</td><td>Strong (own kernel)</td><td>Process-level (namespaces, cgroups)</td></tr>
+</table>
+<p>Vocabulary: <b>image</b> = read-only template (like a program); <b>container</b> = running instance (like a process, module 1); <b>registry</b> = image store (Docker Hub, ECR).</p>
+
+<h3>Dockerfile and commands</h3>
+<pre><code># Dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt   # cached layer
+COPY . .
+EXPOSE 8000
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]</code></pre>
+<pre><code>docker build -t myapp:1.0 .
+docker run -p 8080:8000 -e DATABASE_URL=... myapp:1.0   # host:container port
+docker ps / docker logs &lt;id&gt; / docker stop &lt;id&gt;</code></pre>
+<ul>
+<li><b>Layers</b> are cached; put rarely-changing steps first.</li>
+<li>Container filesystem is <b>ephemeral</b>: data written inside is lost; use <b>volumes</b> or a database service.</li>
+<li>Bind to <code>0.0.0.0</code> inside the container, not 127.0.0.1, or the port mapping can't reach it.</li>
+<li><b>Docker Compose</b> runs multi-container setups (app + database + cache) from one YAML file.</li>
+<li>Don't bake secrets into images; pass them at runtime. Run as non-root. Use small trusted base images.</li>
+</ul>
+
+<h3>Orchestration</h3>
+<p><b>Kubernetes</b> (and simpler managed options like ECS, Cloud Run) schedule containers across machines, restart failures, scale replicas and roll out updates gradually. Powerful but complex: use a managed platform until you need more.</p>
+
+<h3>Cloud basics</h3>
+<table>
+<tr><th>Service type</th><th>You manage</th><th>Examples</th></tr>
+<tr><td>IaaS</td><td>OS and up; rent virtual machines</td><td>EC2, Compute Engine</td></tr>
+<tr><td>PaaS</td><td>Just the app</td><td>Heroku, Render, App Engine</td></tr>
+<tr><td>Serverless / FaaS</td><td>Just functions; billed per run</td><td>AWS Lambda, Cloud Functions</td></tr>
+<tr><td>SaaS</td><td>Nothing; use the product</td><td>Gmail, Slack</td></tr>
+</table>
+<ul>
+<li>Building blocks: <b>compute</b>, <b>object storage</b> (S3), <b>managed databases</b>, <b>virtual networks/VPC</b> + <b>firewalls/security groups</b>, <b>load balancers</b>, <b>DNS</b>, <b>IAM</b> (who can do what).</li>
+<li><b>Regions</b> and <b>availability zones</b>: spread across zones for resilience.</li>
+<li>Pay-as-you-go: set <b>budgets and alerts</b>; forgotten resources cost money.</li>
+<li><b>Deployment strategies</b>: rolling update, <b>blue-green</b> (switch traffic between two identical environments), <b>canary</b> (small % of users first), with easy <b>rollback</b>.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="23-environments.html">← Environments</a><a href="25-cicd.html">Next: CI/CD →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Image vs container?",options:["Same","Image is a template; container is a running instance","Container is a template; image is running","Image is a VM"],answer:1,why:"Like program vs process."},
+{q:"How do containers differ from VMs?",options:["They include a full OS","They share the host kernel, so they're lighter and faster to start","They are slower","They can't be isolated"],answer:1,why:"Process-level isolation."},
+{q:"Data written to a container's filesystem...",options:["Always persists","Is lost when the container is removed unless in a volume","Goes to the cloud","Is encrypted"],answer:1,why:"Use volumes or external databases."},
+{q:"`docker run -p 8080:8000` maps:",options:["Container 8080 → host 8000","Host port 8080 → container port 8000","DNS 8080","Nothing"],answer:1,why:"host:container."},
+{q:"Why copy requirements.txt and install before copying the rest of the code?",options:["Style","Layer caching: dependencies rebuild only when requirements change","Required","Security"],answer:1,why:"Faster builds."},
+{q:"Serverless means:",options:["No servers exist","You deploy functions and the provider manages servers; pay per execution","Free hosting","Only static sites"],answer:1,why:"Servers still exist; you don't manage them."},
+{q:"Canary deployment:",options:["Release to a small share of traffic first","Delete old servers first","Deploy at night","Use two databases"],answer:0,why:"Limit blast radius; watch metrics; then expand."},
+{q:"Your app in a container is unreachable via the published port. Common cause?",options:["It listens on 127.0.0.1 inside the container instead of 0.0.0.0","DNS","Git","Cookies"],answer:0,why:"Localhost inside a container is only that container."}
+];
+window.THINK=[
+{q:"When would you pick a PaaS over Kubernetes for a small team?",a:"When you want to ship features, not operate infrastructure. PaaS handles scaling, TLS and deploys with little ops overhead; Kubernetes adds large operational complexity."},
+{q:"Your cloud bill spiked. What do you check first?",a:"Recently created or forgotten resources, runaway autoscaling, data egress, large logs, a leaked credential used for mining. Use cost explorer and budgets/alerts."}
+];
+</script><script src="quiz.js"></script></body></html>

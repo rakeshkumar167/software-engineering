@@ -1,0 +1,10 @@
+{
+  "name": "software-engineering-course",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Beginner-friendly software development course: 29 static modules with Head First style content and quizzes.",
+  "scripts": {
+    "dev": "npx serve course",
+    "deploy": "npx vercel --prod"
+  }
+}

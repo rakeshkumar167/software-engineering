@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>13. REST APIs and JSON</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="13"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>13. REST APIs, JSON and API Design</h1>
+<p class="lead">How programs (not just people) use the web.</p>
+<section class="hf">
+<h2>🍔 Start here: the drive-through menu</h2>
+<div class="story"><b class="t">A story</b>
+A burger drive-through has a clear <b>menu board</b> and clear <b>rules</b>: say the item, say what you want done (order, change, cancel), get a receipt. You don't need to know how the kitchen works. The menu is the <b>contract</b>.<br><br>
+An <b>API</b> (Application Programming Interface) is a drive-through window for software. Another program "orders" data or actions without knowing how your code or database works inside.<br><br>
+A <b>REST API</b> is a drive-through with <em>very tidy, predictable rules</em>: things have names (nouns), actions use HTTP verbs.</div>
+
+<h3>The pattern: nouns in the URL, verbs in the method</h3>
+<p>Take a <b>resource</b>, like "users". Everything you can do follows the same shape:</p>
+<pre class="fig">  GET     /users          → list all users
+  POST    /users          → create a new user          (body: JSON)
+  GET     /users/42       → get user #42
+  PATCH   /users/42       → change part of user #42
+  DELETE  /users/42       → delete user #42
+  GET     /users/42/orders→ the orders belonging to user #42</pre>
+<p>Learn this pattern once and you can guess how most APIs work.</p>
+
+<h3>One full conversation</h3>
+<pre class="fig">  CLIENT                                          SERVER
+  POST /users
+  Content-Type: application/json
+  {"name":"Ana","email":"ana@x.com"}   ──────►  validates, saves to database
+                                       ◄──────  201 Created
+                                                {"id":43,"name":"Ana","email":"ana@x.com"}
+
+  GET /users/999                       ──────►  looks... not there
+                                       ◄──────  404 Not Found
+                                                {"error":"user not found"}</pre>
+<p>Try a real public API in your terminal (no signup needed):</p>
+<pre><code>$ curl https://jsonplaceholder.typicode.com/users/1
+{ "id": 1, "name": "Leanne Graham", ... }
+
+$ curl -X POST https://jsonplaceholder.typicode.com/posts \
+    -H "Content-Type: application/json" \
+    -d '{"title":"hello","body":"world","userId":1}'</code></pre>
+
+<h3>Use the right status code (be a good API citizen)</h3>
+<table>
+<tr><th>Situation</th><th>Reply with</th></tr>
+<tr><td>It worked, here's the data</td><td>200</td></tr>
+<tr><td>You created something</td><td>201</td></tr>
+<tr><td>Deleted, nothing to send back</td><td>204</td></tr>
+<tr><td>Client sent invalid data</td><td>400 or 422 + helpful message</td></tr>
+<tr><td>Not logged in / not allowed</td><td>401 / 403</td></tr>
+<tr><td>No such thing</td><td>404</td></tr>
+<tr><td>Too many requests</td><td>429</td></tr>
+<tr><td>Our bug</td><td>500</td></tr>
+</table>
+
+<div class="brain"><b class="t">Brain power</b>Which of these API designs is better: <code>GET /deleteUser?id=5</code> or <code>DELETE /users/5</code>? <em>The second. A GET should never change data; web crawlers and prefetchers follow GET links and would delete users by accident!</em></div>
+
+<h3>Making an API pleasant to use</h3>
+<ul>
+<li><b>Pagination</b>: <code>/users?page=2&amp;limit=50</code> instead of a million rows at once.</li>
+<li><b>Filtering/sorting</b>: <code>/users?role=admin&amp;sort=name</code>.</li>
+<li><b>Versioning</b>: <code>/v1/users</code>, so improving it later won't break old apps.</li>
+<li><b>Consistent errors</b>: always the same shape: <code>{"error":{"code":"invalid_email","message":"..."}}</code>.</li>
+<li><b>Documentation</b>: OpenAPI/Swagger gives an interactive page listing every endpoint.</li>
+<li><b>Authentication</b>: usually a token: <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+</ul>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Is REST a technology I install?</summary><p>No, it's a <em>style</em>, a set of conventions on top of HTTP. Nothing to download.</p></details>
+<details class="dumb"><summary>Q: What's the difference between PUT and PATCH?</summary><p>PUT replaces the whole thing; PATCH changes just the fields you send.</p></details>
+<details class="dumb"><summary>Q: What is GraphQL then?</summary><p>An alternative: one endpoint where the client describes exactly which fields it wants. Great for complex UIs; REST remains the common default.</p></details>
+<details class="dumb"><summary>Q: What happens if a phone retries a "pay" request after a timeout?</summary><p>You could charge twice! Real APIs use an <b>idempotency key</b>: a unique ID with the request so the server recognises the retry and doesn't repeat the action.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: design a Todo API</summary>
+<p>Write the request line for: list todos, add a todo, mark todo 7 as done, delete todo 7.<br><b>Answer:</b> <code>GET /todos</code>, <code>POST /todos</code>, <code>PATCH /todos/7</code> (body <code>{"done": true}</code>), <code>DELETE /todos/7</code>.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>An API is a contract that lets programs talk to each other.</li>
+<li>REST: URLs name <b>things</b> (<code>/users/42</code>), HTTP methods are the <b>actions</b>.</li>
+<li>Exchange JSON; use accurate status codes and a consistent error format.</li>
+<li>Paginate, version, document, and authenticate.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>An <b>API</b> is a contract for how one piece of software talks to another. A <b>REST API</b> exposes <b>resources</b> (nouns) at URLs and uses HTTP <b>methods</b> (verbs) on them, usually exchanging JSON.</div>
+
+<h3>Resources and verbs</h3>
+<table>
+<tr><th>Action</th><th>Request</th><th>Typical success</th></tr>
+<tr><td>List users</td><td><code>GET /users</code></td><td>200 + array</td></tr>
+<tr><td>Get one</td><td><code>GET /users/42</code></td><td>200 + object (404 if none)</td></tr>
+<tr><td>Create</td><td><code>POST /users</code> + JSON body</td><td>201 Created + new object, <code>Location</code> header</td></tr>
+<tr><td>Replace</td><td><code>PUT /users/42</code></td><td>200 / 204</td></tr>
+<tr><td>Partial update</td><td><code>PATCH /users/42</code></td><td>200</td></tr>
+<tr><td>Delete</td><td><code>DELETE /users/42</code></td><td>204 No Content</td></tr>
+<tr><td>Nested</td><td><code>GET /users/42/orders</code></td><td>200 + array</td></tr>
+</table>
+
+<h3>A full exchange</h3>
+<pre><code>POST /users HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer eyJhbGci...
+
+{"name": "Ana", "email": "ana@example.com"}
+
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{"id": 43, "name": "Ana", "email": "ana@example.com"}</code></pre>
+<pre><code>curl -X POST https://api.example.com/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ana","email":"ana@example.com"}'</code></pre>
+
+<h3>Design guidelines</h3>
+<ul>
+<li><b>Nouns, plural, lowercase</b> in paths (<code>/orders</code>), not <code>/getOrders</code>.</li>
+<li>Use the <b>right status code</b>: 400 invalid input, 401 not logged in, 403 not allowed, 404 missing, 409 conflict, 422 validation failed, 429 too many requests.</li>
+<li><b>Consistent error shape</b>: <code>{"error": {"code": "invalid_email", "message": "..."}}</code>.</li>
+<li><b>Pagination</b> for lists: <code>GET /users?page=2&amp;limit=50</code>; also filtering and sorting by query parameters.</li>
+<li><b>Versioning</b> so you don't break clients: <code>/v1/users</code>.</li>
+<li><b>Stateless</b>: every request carries what the server needs (auth token). <b>Idempotent</b> PUT/DELETE can be safely retried.</li>
+<li><b>Rate limiting</b> and <b>authentication</b> (API keys, bearer tokens).</li>
+<li>Document with <b>OpenAPI/Swagger</b>. Alternatives: GraphQL (client picks fields), gRPC (binary, typed).</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="12-frontend.html">← Frontend</a><a href="14-browser-security.html">Next: Browser Security →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"In REST, URLs should mostly name:",options:["Actions (verbs)","Resources (nouns)","Servers","Languages"],answer:1,why:"/users, /orders; the HTTP method supplies the verb."},
+{q:"Which request creates a new resource?",options:["GET /users","POST /users","DELETE /users/1","HEAD /users"],answer:1,why:"POST to the collection creates; server replies 201."},
+{q:"What status does a successful DELETE commonly return?",options:["204 No Content","404","301","500"],answer:0,why:"Success with nothing to return."},
+{q:"A client sends JSON with a missing required field. Best response?",options:["200","400 or 422 with an error message","500","301"],answer:1,why:"The client's input was invalid; tell them why."},
+{q:"Why version an API (/v1/)?",options:["Looks professional","Change without breaking existing clients","Faster","Required by HTTP"],answer:1,why:"Old clients keep working while you introduce v2."},
+{q:"What does 'stateless' mean for a REST API?",options:["No database","Each request contains everything needed; the server keeps no per-client conversation state","No responses","No auth"],answer:1,why:"Makes scaling and retries simpler."},
+{q:"Which is better designed?",options:["POST /createUser","POST /users","GET /deleteUser?id=1","POST /users/delete/1"],answer:1,why:"Noun URL + correct verb."},
+{q:"Why paginate list endpoints?",options:["Avoid huge responses and load","Looks nicer","Required by JSON","To hide data"],answer:0,why:"Returning a million rows in one go is slow and wasteful."}
+];
+window.THINK=[
+{q:"Design the endpoints for a blog: posts and comments on posts.",a:"<code>GET/POST /posts</code>, <code>GET/PUT/DELETE /posts/{id}</code>, <code>GET/POST /posts/{id}/comments</code>, <code>DELETE /comments/{id}</code>; auth on writes."},
+{q:"A mobile app retries a request after timeout and the customer is charged twice. What went wrong and how would you fix it?",a:"POST isn't idempotent. Use an idempotency key header: the server remembers the key and returns the original result on retry."}
+];
+</script><script src="quiz.js"></script></body></html>

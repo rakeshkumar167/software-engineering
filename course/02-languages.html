@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2. Interpreted vs Compiled Languages</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="02"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>2. Interpreted vs Compiled Languages</h1>
+<p class="lead">The CPU only understands machine code. Every language needs a way to get there.</p>
+<section class="hf">
+<h2>🗣️ Start here: the translator problem</h2>
+<div class="story"><b class="t">A story</b>
+The CPU is a very fast worker who only speaks <b>machine code</b> (long strings of 1s and 0s). You speak <b>Python</b> or <b>C</b> or <b>JavaScript</b>. You need a translator.<br><br>
+There are two kinds of translators:<br>
+📖 <b>The book translator (compiler)</b>: you hand over your whole book. They translate it completely and give you back a finished book in the other language. Later, anyone can read it without the translator.<br>
+🎧 <b>The live interpreter</b>: they sit next to you and translate every sentence as you speak. No finished book, but you can start talking immediately. And you must bring them along every time.</div>
+
+<pre class="fig">  COMPILED                              INTERPRETED
+  hello.c ──[compiler]──► hello (binary)    hello.py ──► [interpreter] ──► runs
+  (translate ONCE, run many times)          (translate WHILE running, every time)
+  ./hello  ← runs alone                     python3 hello.py ← needs python installed</pre>
+
+<h3>See the difference with the same bug</h3>
+<p>Here's the same mistake in both worlds. We call a function that doesn't exist, but only in a rarely-used branch:</p>
+<pre><code># Python (interpreted)
+def checkout(cart, coupon):
+    if coupon:
+        apply_discont(cart, coupon)   # typo! "discont"
+    return sum(cart)
+
+checkout([5, 10], None)   # works fine!  The typo line never ran.
+checkout([5, 10], "SAVE") # 💥 NameError, found only NOW, in front of a customer</code></pre>
+<p>A compiler (like Go or Rust) would have refused to build the program and pointed at that line before anyone ran it. That's the big trade: <b>compiled = problems caught early, interpreted = fast to try</b>.</p>
+
+<div class="brain"><b class="t">Brain power</b>You're writing a quick script to rename 500 photos, you'll run it once. Compiled or interpreted? And if you were building the software that controls a pacemaker? <em>(Script → interpreted, speed of writing wins. Pacemaker → compiled and strongly typed, catching mistakes early wins.)</em></div>
+
+<h3>The middle ground (most real languages)</h3>
+<pre class="fig">  Java:    .java ─compile─► bytecode ─► [JVM runs it, JIT makes hot parts fast]
+  Python:  .py   ─compile─► bytecode (.pyc) ─► [Python VM interprets]
+  JS (V8): source ─► interpreted at first ─► busy functions get compiled on the fly (JIT)</pre>
+<p><b>Bytecode</b> is a half-translated, portable language. A <b>VM</b> (virtual machine) runs it on any computer. <b>JIT</b> = "Just-In-Time": watch what runs a lot, and compile just that for speed.</p>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: So which is "better"?</summary><p>Neither. It's like asking if a truck or a bicycle is better. Pick for the job: games, databases, operating systems often compile; scripts, web backends, data analysis often interpret.</p></details>
+<details class="dumb"><summary>Q: Why do I have to install Python to run a Python program but not a .exe?</summary><p>The .exe is already translated, the translator isn't needed. A .py file is raw text; Python is the live interpreter that must be present.</p></details>
+<details class="dumb"><summary>Q: Is my browser's JavaScript interpreted?</summary><p>Started that way; modern engines mix interpreting with JIT compiling, so it's fast. "Interpreted vs compiled" is about how a language is <em>run</em>, not a fixed label on the language.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: who needs what?</summary>
+<p>You email a friend (who has a fresh laptop, no developer tools) your program. For each, can they run it? (1) a compiled <code>hello.exe</code> for their OS, (2) <code>hello.py</code>, (3) a <code>.jar</code> file.<br><b>Answer:</b> (1) Yes. (2) No, they must install Python first. (3) Only if they have Java (the JVM) installed.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>CPUs only understand machine code; every language needs translating.</li>
+<li>Compiler = translate everything first. Interpreter = translate while running.</li>
+<li>Compiled catches many errors early and runs fast. Interpreted is quick to edit and try.</li>
+<li>Bytecode + VM + JIT blur the line; look at the implementation, not just the language.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A <b>compiler</b> translates the whole program to machine code <em>before</em> it runs. An <b>interpreter</b> reads and executes the program <em>while</em> it runs.</div>
+
+<table>
+<tr><th></th><th>Compiled (C, C++, Go, Rust)</th><th>Interpreted (Python, Ruby, JavaScript*, PHP)</th></tr>
+<tr><td>Steps</td><td>Source → compile → executable → run</td><td>Source → interpreter runs it directly</td></tr>
+<tr><td>Speed</td><td>Usually faster at runtime</td><td>Usually slower at runtime</td></tr>
+<tr><td>Errors</td><td>Many caught at compile time</td><td>Many appear only when that line executes</td></tr>
+<tr><td>Distribution</td><td>Ship the binary (per OS/CPU)</td><td>Ship source; user needs the interpreter</td></tr>
+<tr><td>Dev loop</td><td>Edit → compile → run (slower feedback)</td><td>Edit → run (fast feedback)</td></tr>
+<tr><td>Portability</td><td>Rebuild per platform</td><td>Same source runs wherever the interpreter exists</td></tr>
+</table>
+
+<h3>It's a spectrum, not two boxes</h3>
+<ul>
+<li><b>Bytecode + VM</b>: Java compiles to bytecode, run by the JVM. Python also compiles to bytecode (<code>.pyc</code>) then interprets it.</li>
+<li><b>JIT (Just-In-Time)</b>: engines like V8 (Chrome/Node.js) compile hot code to machine code while running, so "interpreted" JavaScript can be quite fast.</li>
+<li>Languages aren't inherently one or the other; it's about the <em>implementation</em>.</li>
+<li>Static vs dynamic <em>typing</em> is a separate axis (TypeScript is typed but compiles to JavaScript).</li>
+</ul>
+
+<h3>See it</h3>
+<pre><code># Compiled
+gcc hello.c -o hello    # compile
+./hello                 # run the binary
+
+# Interpreted
+python3 hello.py        # interpreter reads + runs source
+node hello.js</code></pre>
+
+<div class="box">Why it matters: a deployed Python/Node server needs the runtime installed (this is a big reason for containers); a Go server is a single binary you copy to the machine.</div>
+
+<h2>Check your understanding</h2>
+<div id="quiz"></div>
+<h2>Think it through</h2>
+<div id="think"></div>
+<div class="pager"><a href="01-process.html">← Processes</a><a href="03-internet.html">Next: How the Internet Works →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What does a compiler produce?",options:["Output of the program","Machine code (or bytecode) from source, before running","A web page","A network packet"],answer:1,why:"Compilation is translation ahead of execution."},
+{q:"A typo in a rarely used function: which is more likely to be caught before the program starts?",options:["Interpreted, always","Compiled language (type/syntax errors at compile time)","Neither ever","Only at deploy"],answer:1,why:"Compilers check the whole program up front; interpreters hit errors when the line runs (syntax errors are still caught at load)."},
+{q:"Which is typically true of interpreted languages?",options:["Faster feedback loop while developing","Always faster at runtime","Cannot run on multiple OSes","Require no runtime"],answer:0,why:"No compile step makes iteration quick; the trade-off is usually runtime speed."},
+{q:"Java source is compiled to bytecode and run on the JVM. This is:",options:["Purely compiled to machine code","Purely interpreted","A hybrid approach","Not possible"],answer:2,why:"Bytecode + a virtual machine (often with JIT) is a hybrid."},
+{q:"What does a JIT compiler do?",options:["Compiles hot code to machine code while the program runs","Deletes unused code","Encrypts code","Downloads libraries"],answer:0,why:"JIT = Just-In-Time compilation at runtime, e.g. V8 for JavaScript."},
+{q:"To run a Python script on a fresh server you must:",options:["Nothing","Install the Python interpreter","Compile it with gcc","Install a browser"],answer:1,why:"Interpreted code needs its runtime present."},
+{q:"True or false: 'Python is an interpreted language' describes the language itself, not an implementation.",options:["True, it is built into the language","False, it describes the common implementation (CPython); others exist (PyPy has a JIT)","True for all languages","False, Python is compiled only"],answer:1,why:"Interpretation vs compilation is a property of implementations."}
+];
+window.THINK=[
+{q:"You're building a tool to be downloaded by non-technical users on Windows, Mac and Linux. Which approach would you lean toward and why?",a:"A compiled language producing a self-contained binary (e.g. Go, Rust) avoids asking users to install a runtime, though you build once per platform. Interpreted works too if you bundle the runtime."},
+{q:"Why would a startup often pick an interpreted language for a first prototype?",a:"Fast iteration and rich libraries; performance is rarely the bottleneck early on, and you can optimise or rewrite hot paths later."}
+];
+</script>
+<script src="quiz.js"></script>
+</body></html>

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3. How the Internet Works</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="03"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>3. How the Internet Works: IPs, DNS, Routing</h1>
+<p class="lead">A giant network of networks that agree on common rules (protocols).</p>
+<section class="hf">
+<h2>✉️ Start here: the postal system</h2>
+<div class="story"><b class="t">A story</b>
+You want to send a 500-page book to a friend in another country. The post office won't take it as one giant parcel. So you:<br>
+1️⃣ Tear it into <b>100 small envelopes</b>, number them ("page group 7 of 100").<br>
+2️⃣ Write the friend's <b>address</b> and yours on each.<br>
+3️⃣ Drop them in the mail. Each envelope passes through <b>sorting offices</b>; each office only knows "which way to the next office?".<br>
+4️⃣ Envelopes may take <em>different routes</em>, arrive out of order, and one might get lost.<br>
+5️⃣ Your friend sorts them by number, notices #43 is missing and asks you to resend.<br><br>
+The internet works exactly like this. Envelopes = <b>packets</b>. Addresses = <b>IP addresses</b>. Sorting offices = <b>routers</b>. The "resend #43" logic = <b>TCP</b>.</div>
+
+<pre class="fig">  YOU                                                        SERVER
+ ┌────┐   packet 1 ─► [router A] ─► [router C] ─────────────► ┌────┐
+ │    │   packet 2 ─► [router A] ─► [router B] ─► [router D] ►│    │
+ │    │   packet 3 ─► [router A] ─► [router C] ─────────────► │    │
+ └────┘                 (different paths, reassembled in order)└────┘</pre>
+
+<h3>Part 1: IP addresses (the house number)</h3>
+<p>Every device on a network has an IP address, like <code>203.0.113.7</code>. But a house has many rooms, so an address alone isn't enough: add a <b>port</b>, the room number. Web server lives in room <b>443</b> (HTTPS), mail in room 25.</p>
+<pre class="fig">  203.0.113.7 : 443
+  └── building ┘ └ room (which program?)</pre>
+<ul>
+<li><b>Public</b> IP: your home's street address that the whole world can send to.</li>
+<li><b>Private</b> IP (<code>192.168.x.x</code>): inside your home, like "bedroom 2". Your router does <b>NAT</b>, acting as the front desk that sends replies to the right bedroom.</li>
+<li><code>127.0.0.1</code> = "me, myself" (localhost). You're knocking on your own door.</li>
+</ul>
+
+<h3>Part 2: DNS (the phone book)</h3>
+<p>Humans remember <code>google.com</code>; machines need <code>142.250.80.46</code>. <b>DNS</b> looks up the number for the name. Follow one lookup:</p>
+<div class="convo">
+<p class="a"><b>Your browser</b>Do I already know example.com? ...no. Hey resolver (ISP), where is example.com?</p>
+<p class="b"><b>Resolver</b>Not in my notebook. Root server, who handles ".com"?</p>
+<p class="a"><b>Root server</b>Ask the .com servers, here's their address.</p>
+<p class="b"><b>.com server</b>example.com? Ask ITS own name server, here it is.</p>
+<p class="a"><b>example.com's name server</b>It's 93.184.216.34! (Cache this for 5 minutes.)</p>
+</div>
+<p>The resolver remembers the answer for the <b>TTL</b> (time-to-live). That's why DNS changes sometimes take hours to "propagate": everyone's notebook has the old number until it expires.</p>
+
+<h3>Part 3: Routing (asking for directions at every corner)</h3>
+<p>No router knows the whole route. Each looks at the destination IP, checks its table ("anything for 93.x.x.x goes via my uplink B"), and passes the packet on. See it yourself:</p>
+<pre><code>$ traceroute example.com
+ 1  192.168.1.1     (your home router)
+ 2  10.20.0.1       (your ISP)
+ 3  ...             (more hops)
+12  93.184.216.34   (destination!)</code></pre>
+
+<div class="brain"><b class="t">Brain power</b>Packets can arrive out of order, and some vanish. So how does a video call or a downloaded file arrive intact? <em>(TCP numbers packets, reorders them, and re-requests missing ones. Video calls often use UDP instead: a late frame is useless, so they skip resending.)</em></div>
+
+<h3>Everything together: typing a URL</h3>
+<pre class="fig">  1. DNS:   "what's the IP of example.com?"        → 93.184.216.34
+  2. TCP:   open a connection to 93.184.216.34:443  (handshake)
+  3. TLS:   agree on secret keys                    (the "S" in HTTPS)
+  4. HTTP:  GET /  →                                 request
+  5.        ← 200 OK + HTML                          response
+  6. Browser draws the page; repeats for images/CSS/JS</pre>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Why do we have both IPv4 and IPv6?</summary><p>IPv4 has only ~4.3 billion addresses, and we ran out (phones, TVs, fridges...). IPv6 has an absurdly large supply: <code>2001:db8::1</code>. Both are in use now.</p></details>
+<details class="dumb"><summary>Q: Is "the internet" the same as "the web"?</summary><p>No. The internet is the network of networks (the roads). The web (HTTP + HTML pages) is just one thing driving on it. Email, games and video calls use the internet too.</p></details>
+<details class="dumb"><summary>Q: Why does <code>ping</code> show a time like 25 ms?</summary><p>Round-trip time for a tiny packet. Light in fiber takes real time: crossing an ocean costs ~70 ms each way. That's physics, not slow servers.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: DNS change gone wrong</summary>
+<p>You move your website to a new server and change the DNS record. Half your friends see the new site, half the old one. Why? How could you have reduced the problem?<br><b>Answer:</b> Old answers are still cached until the TTL expires. Before a move, lower the TTL (e.g. to 60 s) a day ahead, so caches expire quickly.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Data travels as small <b>packets</b> with source and destination <b>IP</b> addresses.</li>
+<li><b>Ports</b> pick the program on a machine; IP picks the machine.</li>
+<li><b>DNS</b> turns names into IPs, with caching controlled by TTL.</li>
+<li><b>Routers</b> forward packet by packet, hop by hop; nobody knows the whole path.</li>
+<li><b>TCP</b> adds reliability (order, resend); <b>UDP</b> trades it for speed.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Data is cut into small <b>packets</b>. Each packet carries source and destination <b>IP addresses</b> and is forwarded hop by hop by <b>routers</b> until it arrives. <b>DNS</b> turns human names into IP addresses.</div>
+
+<h3>Layers (simplified)</h3>
+<table>
+<tr><th>Layer</th><th>Job</th><th>Examples</th></tr>
+<tr><td>Application</td><td>What the apps say to each other</td><td>HTTP, DNS, SMTP</td></tr>
+<tr><td>Transport</td><td>Reliable delivery between processes, using <b>ports</b></td><td>TCP (reliable, ordered), UDP (fast, no guarantees)</td></tr>
+<tr><td>Internet</td><td>Addressing and routing across networks</td><td>IP</td></tr>
+<tr><td>Link</td><td>Moving bits over one physical link</td><td>Wi-Fi, Ethernet</td></tr>
+</table>
+
+<h2>IP addresses</h2>
+<ul>
+<li>Every device on a network has an <b>IP address</b>. <b>IPv4</b>: <code>203.0.113.7</code> (32 bits, ~4.3 billion, now exhausted). <b>IPv6</b>: <code>2001:db8::1</code> (128 bits).</li>
+<li><b>Public</b> addresses are reachable on the internet. <b>Private</b> ranges (<code>10.x.x.x</code>, <code>172.16-31.x.x</code>, <code>192.168.x.x</code>) are used inside homes/offices. <b>NAT</b> in your router lets many private devices share one public IP.</li>
+<li><code>127.0.0.1</code> / <code>localhost</code> = "this machine". Your dev servers usually listen here.</li>
+<li>An IP identifies a <em>machine</em>; a <b>port</b> (0-65535) identifies a <em>process/service</em> on it. HTTP is port 80, HTTPS 443, SSH 22.</li>
+<li>Addresses can be assigned automatically by <b>DHCP</b>.</li>
+</ul>
+
+<h2>DNS: the phone book</h2>
+<p>Computers route by IP, people remember names. DNS maps <code>www.example.com</code> → <code>93.184.216.34</code>.</p>
+<ol>
+<li>Browser checks its cache, then the OS cache.</li>
+<li>Asks the <b>recursive resolver</b> (your ISP or e.g. 8.8.8.8).</li>
+<li>Resolver, if it doesn't know, asks a <b>root server</b> → which points to the <b><code>.com</code> TLD server</b> → which points to the domain's <b>authoritative name server</b> → which returns the IP.</li>
+<li>Answer is cached for the record's <b>TTL</b>.</li>
+</ol>
+<table>
+<tr><th>Record</th><th>Meaning</th></tr>
+<tr><td>A / AAAA</td><td>Name → IPv4 / IPv6</td></tr>
+<tr><td>CNAME</td><td>Alias to another name</td></tr>
+<tr><td>MX</td><td>Mail servers for the domain</td></tr>
+<tr><td>TXT</td><td>Free text (verification, SPF)</td></tr>
+</table>
+<pre><code>nslookup example.com
+dig example.com +short</code></pre>
+
+<h2>Routing</h2>
+<ul>
+<li>A <b>router</b> connects networks. It looks at a packet's destination IP, consults its <b>routing table</b>, and forwards it to the next hop. No single router knows the full path.</li>
+<li>Packets of one message may take <b>different paths</b> and arrive out of order; TCP reassembles them and retransmits lost ones.</li>
+<li>Your device first sends traffic to its <b>default gateway</b> (home router) if the destination isn't local.</li>
+<li>Between big networks (ISPs), <b>BGP</b> is the protocol that advertises which IP ranges are reachable through whom.</li>
+<li><b>TTL</b> in an IP packet is decremented per hop and dropped at 0, preventing endless loops.</li>
+</ul>
+<pre><code>traceroute example.com    # (tracert on Windows) see hops
+ping example.com          # reachability + latency</code></pre>
+
+<h3>Whole story: typing a URL</h3>
+<ol>
+<li>DNS lookup → IP. 2. TCP connection to IP:443 (three-way handshake). 3. TLS handshake (see HTTPS). 4. HTTP request sent. 5. Packets routed across many hops to the server and back. 6. Browser renders response.</li>
+</ol>
+
+<h2>Check your understanding</h2>
+<div id="quiz"></div>
+<h2>Think it through</h2>
+<div id="think"></div>
+<div class="pager"><a href="02-languages.html">← Interpreted vs Compiled</a><a href="04-http.html">Next: HTTP, HTTPS, Servers →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What does DNS do?",options:["Encrypts web traffic","Translates domain names to IP addresses","Assigns private IPs","Stores web pages"],answer:1,why:"DNS is the internet's naming system."},
+{q:"Which is a private IP address?",options:["8.8.8.8","192.168.1.20","203.0.113.7","93.184.216.34"],answer:1,why:"192.168.0.0/16 is a private range, not routable on the public internet."},
+{q:"What is 127.0.0.1?",options:["Google's server","The loopback address: your own machine","The default gateway","A broadcast address"],answer:1,why:"It always refers to the local machine (localhost)."},
+{q:"IP address identifies a machine. What identifies a specific service on that machine?",options:["MAC address","Port number","Domain TTL","Subnet"],answer:1,why:"IP + port pinpoints a listening process, e.g. 203.0.113.7:443."},
+{q:"What does a router primarily do?",options:["Resolve domain names","Forward packets toward their destination using routing tables","Store cookies","Compile code"],answer:1,why:"Routers forward packets hop by hop."},
+{q:"Why is TCP useful on top of IP?",options:["It makes packets smaller","It provides reliable, ordered delivery by reassembly and retransmission","It replaces DNS","It encrypts data"],answer:1,why:"IP is best-effort; TCP adds reliability."},
+{q:"A DNS answer has TTL = 300. What does it mean?",options:["The record is invalid after 300 hops","Resolvers may cache it for 300 seconds","The server has 300 users","Port 300 is used"],answer:1,why:"DNS TTL is cache lifetime in seconds. It is why DNS changes take time to propagate."},
+{q:"Which DNS record type maps a name to an IPv4 address?",options:["MX","CNAME","A","TXT"],answer:2,why:"A = Address (AAAA for IPv6)."},
+{q:"NAT lets a home network:",options:["Share one public IP among many private devices","Skip DNS","Avoid routers","Use no ports"],answer:0,why:"The router rewrites addresses/ports so many private devices appear as one public IP."}
+];
+window.THINK=[
+{q:"You moved your site to a new server and updated the A record, but some users still see the old site. Why?",a:"Resolvers and browsers cached the old record until its TTL expired. Lowering the TTL before a migration helps."},
+{q:"Why do web pages still load if one router on the path fails?",a:"Routing is dynamic and redundant: routers update tables and packets take alternative paths."},
+{q:"Walk through everything that happens between typing a URL and seeing the page.",a:"Cache check → DNS resolution → TCP handshake → TLS handshake (for https) → HTTP request → server process builds response → response packets routed back → browser parses HTML and fetches more resources."}
+];
+</script>
+<script src="quiz.js"></script>
+</body></html>

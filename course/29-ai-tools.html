@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>29. Working with AI Tools</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="29"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>29. Working with AI Tools</h1>
+<p class="lead">AI assistants are powerful and fast. The responsibility for the result stays with you.</p>
+<section class="hf">
+<h2>🧑‍🍳 Start here: the brilliant, overconfident intern</h2>
+<div class="story"><b class="t">A story</b>
+Imagine an intern who has read every programming book and website ever written. They answer instantly, never get tired, and write plausible code for almost anything.<br><br>
+But sometimes they <b>confidently invent</b> a function that doesn't exist, miss a security hole, or "fix" a failing test by faking its answer. And they don't know your project unless you tell them.<br><br>
+That's an <b>AI coding assistant</b>. Hugely useful, if you treat it as a <b>fast junior colleague whose work you must review</b>, never as an oracle. <b>You</b> are responsible for what ships.</div>
+
+<h3>How it works (just enough to use it wisely)</h3>
+<pre class="fig">   your prompt + any files you share (the "context")
+              │
+              ▼
+   ┌───────────────────────────────┐
+   │  Large Language Model         │   learned patterns from huge amounts of text & code
+   │  predicts the most likely     │   it does NOT "look up" facts unless given tools
+   │  next words, one at a time    │
+   └───────────────────────────────┘
+              │
+              ▼
+   fluent answer: sometimes brilliant, sometimes wrong ("hallucination")</pre>
+<ul>
+<li>It only knows what's in its <b>context</b> (your messages and files) plus its training. Missing info means it <em>guesses</em>.</li>
+<li><b>Agents</b> add tools (read files, run tests, search) in a loop, so they can check their own work.</li>
+<li>Because it predicts what sounds right, a wrong answer sounds exactly as confident as a right one.</li>
+</ul>
+
+<h3>Great uses</h3>
+<ul>
+<li>🔎 <b>Explain</b> unfamiliar code, error messages, or concepts ("explain this stack trace step by step").</li>
+<li>🧱 <b>Boilerplate</b>: scaffolding, config files, regexes, shell one-liners, format conversion.</li>
+<li>🧪 <b>Draft tests</b> and suggest edge cases you hadn't thought of.</li>
+<li>👀 <b>Review</b> your code for bugs, clarity, security.</li>
+<li>🎓 <b>Learn</b>: "quiz me on HTTP", "give me an analogy", "what's wrong with my explanation?"</li>
+</ul>
+
+<h3>Prompting that works: be a good manager</h3>
+<div class="convo">
+<p class="b"><b>Weak prompt</b>"make login work"</p>
+<p class="a"><b>Strong prompt</b>"Flask 3 + SQLAlchemy app. <code>POST /login</code> should check a bcrypt-hashed password from the <code>users</code> table and set an HttpOnly, Secure session cookie. Current code and the error are below. Don't change the DB schema. Add pytest tests for wrong password and unknown email."</p>
+</div>
+<ol>
+<li><b>Context</b>: language, versions, goal, what you've tried, the exact error text.</li>
+<li><b>Constraints</b>: "no new dependencies", "keep the existing function names".</li>
+<li><b>Examples</b>: sample input and expected output.</li>
+<li><b>Small steps</b>: one change at a time you can review, rather than "build my whole app".</li>
+<li><b>Iterate</b>: "that fails with this error", "why did you choose X?", "what are the alternatives?"</li>
+</ol>
+
+<h3>The verification habit (non-negotiable)</h3>
+<pre class="fig">   AI suggests code
+        │
+        ▼  1. READ it: can you explain every line?
+        ▼  2. RUN it + run the tests (add some of your own, incl. edge cases)
+        ▼  3. CHECK the docs: do these functions/options exist in YOUR version?
+        ▼  4. REVIEW for security: injection? missing auth check? hard-coded secret?
+        ▼  5. COMMIT in a small step (git), so a bad change is easy to undo
+        ✔ ship</pre>
+<div class="fixit"><b>Watch for:</b> invented APIs; outdated practices; code that makes a test pass by hard-coding the expected answer; needless complexity; "fixes" that silence an error instead of solving the cause. <b>Read the diff, not just the green checkmark.</b></div>
+
+<div class="brain"><b class="t">Brain power</b>An assistant tells you "use <code>pandas.read_csv(path, fast_parse=True)</code>". You've never seen that option. What do you do? <em>Check the official docs for your pandas version. If <code>fast_parse</code> doesn't exist, it was hallucinated. Never assume a confident answer is a true one.</em></div>
+
+<h3>Privacy, honesty and learning</h3>
+<ul>
+<li><b>Don't paste secrets</b> (API keys, passwords), customer data or private company code into tools your organisation hasn't approved. Know the data policy.</li>
+<li>Follow your school's/employer's rules on AI use; <b>cite or disclose</b> where required. Respect licences.</li>
+<li><b>Try first, then ask.</b> Struggling for 15 minutes builds understanding. Letting AI do all your thinking means you can't judge its answers.</li>
+<li>Ask it to <b>teach</b>: "explain why", "quiz me", "critique my solution", and then test what it says by running things yourself.</li>
+<li>The fundamentals in modules 1 to 28 matter <em>more</em> now: you can only direct and verify what you understand.</li>
+</ul>
+
+<h3>A sample healthy workflow</h3>
+<pre class="fig">  1. Write down what you want in plain words (and what "done" looks like)
+  2. Ask the AI for a plan; read it; fix misunderstandings
+  3. Implement in small steps (you or the AI), one commit each
+  4. Run the tests after EVERY step; paste failures back
+  5. Ask for a review: "what edge cases or security issues did we miss?"
+  6. YOU read the final diff and take responsibility</pre>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Will AI replace programmers?</summary><p>It changes the work: less typing boilerplate, more specifying, reviewing, designing and verifying. People who understand systems well, as this course teaches, are better placed to use it effectively.</p></details>
+<details class="dumb"><summary>Q: It gave me different answers when I asked twice. Why?</summary><p>Its output involves randomness, and small prompt differences change results. That's another reason to verify with tests rather than trust any single answer.</p></details>
+<details class="dumb"><summary>Q: Can I use AI for school assignments?</summary><p>Only as your instructor permits. Even when allowed, make sure you could explain and rebuild the solution yourself; the point of the assignment is your learning.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: rewrite the prompt</summary>
+<p>Improve: <em>"my page is broken fix it"</em>.<br><b>Answer (example):</b> "My HTML page (Chrome 126) shows a blank screen after clicking Submit. The console shows <code>Uncaught TypeError: Cannot read properties of null (reading 'value')</code> at app.js:14. Here's app.js and the form HTML. What's the likely cause, and how can I confirm it before changing anything?"</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>AI assistants are fast, fluent and sometimes confidently wrong; treat them as a junior colleague.</li>
+<li>Give rich context and constraints; work in small, reviewable steps.</li>
+<li>Always read, run, test, check docs and review security; you own what you ship.</li>
+<li>Protect secrets and private data; follow usage rules; use AI to learn, not to skip learning.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Treat an AI assistant like a very fast, well-read junior colleague who is sometimes confidently wrong. <b>You own what you ship</b>: understand it, test it, review it.</div>
+
+<h3>How LLM assistants work (just enough)</h3>
+<ul>
+<li>A <b>large language model</b> predicts likely next text from patterns learned in training. It doesn't "look things up" unless given tools, and it can produce plausible but false output (<b>hallucination</b>), e.g. a function or API that doesn't exist.</li>
+<li>It sees only its <b>context window</b>: your prompt, pasted files, conversation. Missing context means guessing.</li>
+<li>Agents add <b>tools</b> (read files, run commands, run tests, browse) in a loop, so they can check their own work.</li>
+</ul>
+
+<h3>Where they shine</h3>
+<ul>
+<li>Explaining unfamiliar code, errors, concepts ("explain this stack trace").</li>
+<li>Boilerplate, scaffolding, tests, regexes, shell one-liners, format conversions.</li>
+<li>Exploring options, reviewing code for issues, drafting docs, refactoring with tests as a safety net.</li>
+<li>Learning: ask for analogies, quizzes and step-by-step reasoning (not just the answer).</li>
+</ul>
+
+<h3>Prompting that works</h3>
+<ol>
+<li><b>Give context</b>: language, framework, versions, goal, what you've tried, the exact error.</li>
+<li><b>Be specific</b> about the outcome and constraints ("no new dependencies", "must handle empty input").</li>
+<li><b>Show examples</b> of input and expected output.</li>
+<li><b>Break big tasks into steps</b>; review each.</li>
+<li><b>Iterate</b>: point out what's wrong. Ask it to explain its choices and alternatives.</li>
+<li>Let it <b>run the tests</b>; paste failing output back.</li>
+</ol>
+<pre><code>Weak:  "make my login work"
+Better: "Flask 3 app. POST /login should verify a bcrypt hash from the users table
+        (SQLAlchemy) and set a session cookie (HttpOnly, Secure). Here is my
+        current code and the error. Don't change the DB schema. Add pytest tests."</code></pre>
+
+<h3>Verify everything</h3>
+<ul>
+<li><b>Read</b> the code. If you can't explain a line, don't ship it.</li>
+<li><b>Run and test it</b>, including edge cases. Check that APIs/libraries exist and match your version (read the docs).</li>
+<li><b>Review for security</b> (modules 14, 17, 28): SQL injection, missing authorization, hard-coded secrets, outdated practices.</li>
+<li>Prefer small changes you can review and commit with git (module 7) so bad suggestions are easy to revert.</li>
+<li>Watch for over-engineering and for code that makes tests pass by special-casing them.</li>
+</ul>
+
+<h3>Privacy, ethics, and learning</h3>
+<ul>
+<li><b>Don't paste secrets</b>, customer data or confidential code into tools your organisation hasn't approved. Know the data policy.</li>
+<li>Respect licences and your school/employer's <b>rules on AI use</b>; disclose where required. Submitting AI work as your own understanding defeats learning.</li>
+<li>Use AI to <b>learn faster</b>: try first, then compare; ask it to quiz you. Skills (debugging, design, reading code) are what let you judge its output.</li>
+<li>Fundamentals from modules 1-28 matter <em>more</em>, not less: you can only direct and check what you understand.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="28-secure-coding.html">← Secure Coding</a><a href="index.html">Back to all modules →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What is a hallucination in an LLM?",options:["A crash","Plausible-sounding but false output, e.g. an invented function","A slow response","An encrypted prompt"],answer:1,why:"The model generates likely text, not guaranteed facts."},
+{q:"Who is responsible for AI-generated code you commit?",options:["The AI","You","The tool vendor","Nobody"],answer:1,why:"You own what you ship."},
+{q:"Which prompt is likely to give a better result?",options:["'Fix it'","'Python 3.12, FastAPI. This endpoint returns 500 with this traceback: ... Expected: 404 when user is missing. Don't change the schema.'","'Code please'","'Make it fast'"],answer:1,why:"Context, error, expected behaviour and constraints."},
+{q:"You get code using a library function you've never seen. Next step?",options:["Ship it","Check the official docs to confirm it exists and behaves as claimed, then test","Assume it's right","Delete tests"],answer:1,why:"Verify APIs and versions."},
+{q:"Is it ok to paste your company's production database credentials into a public AI chat?",options:["Yes","No, never share secrets or confidential data with unapproved tools","Only on weekends","Yes if short"],answer:1,why:"Treat prompts as potentially stored and visible."},
+{q:"A safe way to adopt AI-suggested changes?",options:["Small commits reviewed and tested, easy to revert with git","One giant paste","Skip review","Deploy directly to prod"],answer:0,why:"Small reviewable steps contain risk."},
+{q:"Why do fundamentals matter more in the AI era?",options:["They don't","You must understand and judge the output to direct and verify it","AI can't read","Only for interviews"],answer:1,why:"Without understanding you can't tell good from plausible-but-wrong."}
+];
+window.THINK=[
+{q:"An AI makes a failing test pass by hard-coding the expected value. How do you spot and prevent this?",a:"Read the diff, not just the test result. Ask for a general implementation, add more test cases with different inputs, and review whether logic really implements the requirement."},
+{q:"Describe how you'd use an AI tool to learn about TLS without just copying answers.",a:"Try to explain the handshake first, ask the AI to critique your explanation, request a quiz, then run <code>openssl s_client</code> yourself and check the AI's claims against what you observe."}
+];
+</script><script src="quiz.js"></script></body></html>

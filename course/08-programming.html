@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>8. Programming Fundamentals</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="08"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>8. Programming Fundamentals</h1>
+<p class="lead">The ideas shared by almost every language (shown here in Python).</p>
+<section class="hf">
+<h2>📦 Start here: labelled boxes and a to-do list</h2>
+<div class="story"><b class="t">A story</b>
+Imagine a tidy storage room full of <b>labelled boxes</b>. One labelled <code>age</code> holds <code>21</code>. One labelled <code>name</code> holds <code>"Ana"</code>. Those boxes are <b>variables</b>.<br><br>
+Now picture a to-do list taped to the wall: "<em>If the bin is full, take it out. For each room, vacuum. Repeat until the kitchen is clean.</em>" That's <b>control flow</b>.<br><br>
+And your friend's note "<em>do the 'clean a room' routine</em>" is a <b>function</b>: a named recipe you can reuse.<br><br>
+Programming is just: <b>boxes + decisions + repetition + reusable routines</b>.</div>
+
+<h3>1. Variables and types: what kind of thing is in the box?</h3>
+<pre><code>age = 21              # whole number      (int)
+price = 9.99          # decimal           (float)
+name = "Ana"          # text              (str)
+is_student = True     # yes/no            (bool)
+tags = ["a", "b"]     # ordered list      (list)
+person = {"name": "Ana", "age": 21}   # labelled pairs (dict)</code></pre>
+<p>Types matter because they decide what's allowed: you can multiply <code>21 * 2</code> but not <code>"Ana" * "Bob"</code>. And <code>"5" + "5"</code> gives <code>"55"</code> (text glued), while <code>5 + 5</code> gives <code>10</code>.</p>
+<pre class="fig">   age ┌────┐      name ┌───────┐     tags ┌───┬───┬───┐
+       │ 21 │           │ "Ana" │          │ a │ b │ c │
+       └────┘           └───────┘          └───┴───┴───┘
+       int                str               list (index 0, 1, 2 ...)</pre>
+
+<h3>2. Decisions: if / else</h3>
+<pre><code>temperature = 31
+if temperature &gt; 30:
+    print("Wear shorts")
+elif temperature &gt; 15:
+    print("T-shirt is fine")
+else:
+    print("Bring a jacket")</code></pre>
+<p>The computer checks conditions top to bottom and runs the <b>first</b> one that's true. Indentation (the spaces) tells Python what belongs inside.</p>
+
+<h3>3. Repetition: loops</h3>
+<pre><code>for fruit in ["apple", "pear", "fig"]:     # once per item
+    print("I like", fruit)
+
+count = 3
+while count &gt; 0:                           # as long as true
+    print(count)
+    count = count - 1
+print("Liftoff!")</code></pre>
+<div class="fixit"><b>Infinite loop alert:</b> if you forget <code>count = count - 1</code>, the condition stays true forever. Ctrl+C stops it (module 6).</div>
+
+<h3>4. Functions: write once, use anywhere</h3>
+<pre class="fig">   input(s) ──► ┌────────────────┐ ──► output
+   (parameters) │  total(prices) │     (return value)
+                └────────────────┘</pre>
+<pre><code>def total(prices, tax=0.1):       # def = "I'm defining a recipe"
+    subtotal = sum(prices)
+    return subtotal * (1 + tax)   # hand the answer back
+
+print(total([10, 20]))            # 33.0
+print(total([10, 20], tax=0.2))   # 36.0</code></pre>
+<p>Variables made <em>inside</em> a function are <b>local</b>: they vanish when it ends, like scribbles on a scrap paper.</p>
+
+<div class="brain"><b class="t">Brain power</b>You have the same 6 lines of code pasted in 4 places, and the tax rate changes. How many places must you edit? <em>4, and you'll forget one. Put it in one function: edit once. That's the DRY rule: Don't Repeat Yourself.</em></div>
+
+<h3>5. When things go wrong: errors</h3>
+<pre><code>try:
+    n = int(input("Age? "))
+except ValueError:
+    print("Please type digits only")</code></pre>
+<p>Rather than crashing, you <em>catch</em> the problem and respond kindly. Read error messages from the <b>bottom</b>: the last line says what, the lines above say where.</p>
+
+<h3>A tiny complete program</h3>
+<pre><code>def grade(score):
+    if score &gt;= 90: return "A"
+    if score &gt;= 80: return "B"
+    return "C or below"
+
+scores = {"Ana": 95, "Ben": 82, "Cy": 60}
+for student, score in scores.items():
+    print(student, "→", grade(score))
+# Ana → A,  Ben → B,  Cy → C or below</code></pre>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Why does <code>0.1 + 0.2</code> give 0.30000000000000004?</summary><p>Computers store decimals in binary, and 0.1 can't be written exactly in binary, like 1/3 can't be written exactly in decimal. For money, store whole cents (<code>1999</code>) instead of <code>19.99</code>.</p></details>
+<details class="dumb"><summary>Q: Why do lists start at index 0?</summary><p>The index is the <em>distance from the start</em>. The first item is 0 steps from the start. You'll get used to it quickly; "off-by-one" errors are famously common!</p></details>
+<details class="dumb"><summary>Q: Python, JavaScript, Java: do I need to learn all?</summary><p>No. Learn one well. The ideas here (variables, types, conditions, loops, functions) carry over to all of them; only the spelling changes.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: write FizzBuzz-lite</summary>
+<p>Print the numbers 1 to 10, but print "even" instead of the number when it's even.<br><b>Answer:</b><br><pre><code>for n in range(1, 11):
+    if n % 2 == 0:       # % = remainder after dividing
+        print("even")
+    else:
+        print(n)</code></pre></p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Variables = labelled boxes holding typed values (int, float, str, bool, list, dict).</li>
+<li><code>if/elif/else</code> decide; <code>for</code>/<code>while</code> repeat.</li>
+<li>Functions package reusable steps: parameters in, return value out.</li>
+<li>Catch errors with <code>try/except</code>; read messages bottom-up.</li>
+<li>These ideas are the same in nearly every language.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A program is <b>data</b> plus <b>instructions</b> that transform it. The core tools: variables, types, conditions, loops and functions.</div>
+
+<h3>Variables and types</h3>
+<p>A <b>variable</b> is a name for a value in memory. Every value has a <b>type</b> which decides what you can do with it.</p>
+<pre><code>age = 21              # int
+price = 9.99          # float (floating point: 0.1+0.2 != 0.3 exactly!)
+name = "Ana"          # str
+active = True         # bool
+items = [1, 2, 3]     # list
+user = {"name": "Ana", "age": 21}   # dict (key → value)
+nothing = None        # absence of value (null in other languages)</code></pre>
+<ul>
+<li><b>Static typing</b> (Java, Go, TypeScript): types checked before running. <b>Dynamic typing</b> (Python, JS): checked as it runs.</li>
+<li><b>Mutable</b> values can be changed in place (lists); <b>immutable</b> cannot (strings, numbers, tuples).</li>
+<li><b>Scope</b>: where a variable is visible. Variables created inside a function are local to it.</li>
+</ul>
+
+<h3>Control flow</h3>
+<pre><code>if age &gt;= 18 and active:
+    print("adult")
+elif age &gt;= 13:
+    print("teen")
+else:
+    print("child")
+
+for n in [1, 2, 3]:       # iterate a collection
+    print(n * 2)
+
+count = 0
+while count &lt; 3:          # repeat while condition holds
+    count += 1</code></pre>
+
+<h3>Functions</h3>
+<p>Reusable, named blocks: take <b>parameters</b>, <b>return</b> a value. They let you break big problems into small ones and avoid repeating yourself (DRY).</p>
+<pre><code>def total(prices, tax=0.1):
+    return sum(prices) * (1 + tax)
+
+print(total([10, 20]))        # 33.0
+print(total([10, 20], 0.2))   # 36.0</code></pre>
+<ul>
+<li>Functions should do <b>one thing</b>, have clear names, and ideally avoid hidden side effects.</li>
+<li><b>Recursion</b>: a function calling itself, needs a base case to stop.</li>
+<li><b>Errors/exceptions</b>: <code>try: ... except ValueError: ...</code> handle failure instead of crashing.</li>
+</ul>
+
+<h3>Other essentials</h3>
+<ul>
+<li><b>Modules/packages</b>: import code others wrote (<code>import json</code>), managed with pip/npm.</li>
+<li><b>Comments</b> explain <em>why</em>; names explain <em>what</em>.</li>
+<li><b>Reading error messages</b>: the last line says what, the traceback says where.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="07-git.html">← Git</a><a href="09-dsa.html">Next: Data Structures & Algorithms →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What is a variable?",options:["A fixed constant","A name referring to a value stored in memory","A function","A file"],answer:1,why:"Variables label values so we can use and change them."},
+{q:"Which data type is best for key → value lookups?",options:["list","dict / map","bool","int"],answer:1,why:"Dictionaries/maps associate keys with values."},
+{q:"What happens with `0.1 + 0.2` in most languages?",options:["Exactly 0.3","Approximately 0.30000000000000004 because of binary floating point","Error","0"],answer:1,why:"Floats can't represent many decimals exactly; use integers (cents) or Decimal for money."},
+{q:"A function has a parameter and a return value. What does return do?",options:["Prints to the screen","Sends a value back to the caller and ends the function","Loops","Imports a module"],answer:1,why:"Return hands a result to the code that called the function."},
+{q:"A variable created inside a function is usually:",options:["Global","Local: visible only inside that function","Permanent","Immutable"],answer:1,why:"That's scope."},
+{q:"Which of these is a loop?",options:["if","for","def","import"],answer:1,why:"for and while repeat blocks."},
+{q:"Recursion must have:",options:["A base case that stops it","Two functions","A global variable","No parameters"],answer:0,why:"Without a base case it recurses forever, causing a stack overflow."},
+{q:"Static vs dynamic typing: which statement is right?",options:["Static checks types before running; dynamic checks while running","Dynamic is always faster","Static languages have no types","They're identical"],answer:0,why:"The difference is when type errors are found."}
+];
+window.THINK=[
+{q:"Write a function that returns the largest number in a list without using max().",a:"<pre><code>def biggest(xs):\n    best = xs[0]\n    for x in xs:\n        if x &gt; best: best = x\n    return best</code></pre> Discuss empty list handling."},
+{q:"Why is it better to split a 200-line script into functions?",a:"Readability, reuse, testing each piece, easier debugging, and easier teamwork."}
+];
+</script><script src="quiz.js"></script></body></html>

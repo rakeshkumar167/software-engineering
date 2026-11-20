@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>4. HTTP, HTTPS and a Simple Server</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="04"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>4. HTTP, HTTPS, Requests, Responses and a Simple Server</h1>
+<p class="lead">The language browsers and servers use to talk.</p>
+<section class="hf">
+<h2>🍽️ Start here: the restaurant</h2>
+<div class="story"><b class="t">A story</b>
+At a restaurant you (the <b>client</b>) tell the waiter what you want. The waiter goes to the kitchen (the <b>server</b>) and returns with either your food or an apology: "Sorry, we're out of that."<br><br>
+Key rules of this restaurant:<br>
+• You must <b>ask</b> first. The kitchen never sends food unprompted.<br>
+• The waiter has <b>no memory</b>. Every order starts with "Hi, table 5, I'd like..." (this is <b>stateless</b>).<br>
+• Every answer has a clear <b>outcome</b>: here's your food / we don't have that / the kitchen is on fire.<br><br>
+That's <b>HTTP</b>: a request, a response, a status code that says how it went.</div>
+
+<h3>A request, line by line</h3>
+<pre class="fig">  GET /menu?vegan=true HTTP/1.1      ← METHOD  PATH?query  VERSION
+  Host: pizza.example.com            ← which restaurant (headers: extra info)
+  Accept: text/html                  ← "I'd like HTML please"
+  Cookie: table=5                    ← "I'm table 5" (remember me!)
+                                     ← blank line, then optional BODY</pre>
+<table>
+<tr><th>Method</th><th>Restaurant version</th></tr>
+<tr><td>GET</td><td>"Show me the menu." (just looking, changes nothing)</td></tr>
+<tr><td>POST</td><td>"Here's my order." (creates something new)</td></tr>
+<tr><td>PUT / PATCH</td><td>"Change my order." (replace / modify)</td></tr>
+<tr><td>DELETE</td><td>"Cancel my order."</td></tr>
+</table>
+
+<h3>A response, line by line</h3>
+<pre class="fig">  HTTP/1.1 200 OK                    ← STATUS: how did it go?
+  Content-Type: text/html            ← what you're getting
+  Content-Length: 1234
+                                     ← blank line
+  &lt;html&gt; ...the page... &lt;/html&gt;      ← BODY</pre>
+<p>Status codes by <b>first digit</b>, so you can read them like traffic lights:</p>
+<table>
+<tr><td>2xx 🟢</td><td>"Done!" (200 OK, 201 Created)</td></tr>
+<tr><td>3xx 🔀</td><td>"Go over there instead." (301/302 redirect)</td></tr>
+<tr><td>4xx 🟠</td><td><b>You</b> messed up. (404 not found, 403 not allowed, 400 bad request)</td></tr>
+<tr><td>5xx 🔴</td><td><b>We</b> messed up. (500 crashed, 503 overloaded)</td></tr>
+</table>
+
+<h3>Watch a real one</h3>
+<pre><code>$ curl -i https://example.com
+HTTP/2 200
+content-type: text/html
+...
+&lt;!doctype html&gt;...</code></pre>
+<p>Or in your browser: press <b>F12 → Network tab</b> and reload any page. Every row is one request/response. Click one and read it.</p>
+
+<div class="brain"><b class="t">Brain power</b>A page with 1 HTML file, 3 images, 2 CSS files and 4 scripts: how many HTTP requests? <em>(10. The browser asks for the HTML, finds out what else it needs, then asks again for each one.)</em></div>
+
+<h3>HTTPS: the sealed envelope</h3>
+<p>Plain HTTP is a <b>postcard</b>: anyone handling it can read it (café Wi-Fi owner, your ISP). <b>HTTPS</b> puts it in a <b>sealed, tamper-proof envelope</b>, and checks the address is really the place you meant.</p>
+<pre class="fig">  Browser                                   Server
+     │ ── "hello, I speak these ciphers" ──►  │
+     │ ◄── certificate (ID card from a CA) ── │   ① "I'm really example.com"
+     │  checks: name matches? not expired?    │   ② browser verifies the ID
+     │      signed by someone I trust?        │
+     │ ◄───── agree on a secret key ─────►    │   ③ both now share a secret
+     │ ═══ everything now encrypted ═══════   │   ④ HTTP flows inside the tunnel</pre>
+<p>A <b>certificate</b> is like a passport; a <b>Certificate Authority (CA)</b> is the government that issued it, trusted by your browser.</p>
+
+<h3>Build your own server (the "aha" moment)</h3>
+<p>Save as <code>server.py</code>, run <code>python3 server.py</code>, then visit <code>http://localhost:8000</code>:</p>
+<pre><code>from http.server import BaseHTTPRequestHandler, HTTPServer
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):                    # called for every GET request
+        print("Request for:", self.path)  # watch your terminal!
+        body = f"You asked for {self.path}".encode()
+        self.send_response(200)           # status line
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()                # the blank line
+        self.wfile.write(body)            # the body
+
+HTTPServer(("127.0.0.1", 8000), Handler).serve_forever()</code></pre>
+<p>Visit <code>/pizza</code>, then <code>/anything</code>. Your terminal prints each request. <b>That's all a web server is:</b> a process looping forever, waiting for requests and writing responses. Django, Flask, Express: all just fancier versions.</p>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: If HTTP forgets everything, how does a shop remember my cart?</summary><p>Your browser sends a small ID with each request (a <b>cookie</b>), and the server looks the ID up. The waiter has no memory, but he's holding your table number. (More in the next module.)</p></details>
+<details class="dumb"><summary>Q: 401 vs 403, what's the difference?</summary><p>401: "I don't know who you are, log in." 403: "I know who you are, and you're not allowed."</p></details>
+<details class="dumb"><summary>Q: Does the padlock mean the site is safe?</summary><p>It means the connection is private and you're talking to the real owner of that domain. A scam site can have a padlock too. Always check the domain name.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: read the status</summary>
+<p>What went wrong in each? (a) <code>404</code> (b) <code>500</code> (c) <code>301</code> (d) <code>503</code> (e) <code>403</code><br><b>Answer:</b> (a) client asked for something that doesn't exist; (b) server code crashed; (c) page moved permanently, follow the new address; (d) server overloaded or down for maintenance; (e) you're known but forbidden.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>HTTP = client sends a <b>request</b> (method, path, headers, body), server returns a <b>response</b> (status, headers, body).</li>
+<li>It's <b>stateless</b>; memory comes from cookies/sessions.</li>
+<li>Status first digit: 2 ok, 3 redirect, 4 your fault, 5 server's fault.</li>
+<li>HTTPS = HTTP inside TLS: privacy, tamper-proofing, and proof of identity via certificates.</li>
+<li>A web server is a long-running process that loops: accept, read request, write response.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>HTTP is a text-based <b>request → response</b> protocol over TCP. The client asks; the server answers. Each request is independent (<b>stateless</b>).</div>
+
+<h3>Request</h3>
+<pre><code>GET /products?id=42 HTTP/1.1
+Host: shop.example.com
+Accept: text/html
+Cookie: session=abc123
+
+(optional body)</code></pre>
+<ul>
+<li><b>Method</b>: what to do. <code>GET</code> read, <code>POST</code> create/submit, <code>PUT</code>/<code>PATCH</code> update, <code>DELETE</code> remove.</li>
+<li><b>Path + query string</b>: which resource, plus parameters (<code>?id=42</code>).</li>
+<li><b>Headers</b>: metadata (<code>Host</code>, <code>Content-Type</code>, <code>Authorization</code>, <code>Cookie</code>).</li>
+<li><b>Body</b>: data sent (form fields, JSON), mostly with POST/PUT.</li>
+</ul>
+
+<h3>Response</h3>
+<pre><code>HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1234
+Set-Cookie: session=abc123; HttpOnly
+
+&lt;html&gt;...&lt;/html&gt;</code></pre>
+<table>
+<tr><th>Status</th><th>Meaning</th><th>Common</th></tr>
+<tr><td>1xx</td><td>Informational</td><td>101</td></tr>
+<tr><td>2xx</td><td>Success</td><td>200 OK, 201 Created, 204 No Content</td></tr>
+<tr><td>3xx</td><td>Redirect</td><td>301 Moved, 302 Found, 304 Not Modified</td></tr>
+<tr><td>4xx</td><td>Client's fault</td><td>400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found</td></tr>
+<tr><td>5xx</td><td>Server's fault</td><td>500 Internal Error, 502 Bad Gateway, 503 Unavailable</td></tr>
+</table>
+
+<h3>Safe vs idempotent</h3>
+<p><b>Safe</b> = doesn't change server state (GET). <b>Idempotent</b> = repeating gives same result as doing once (GET, PUT, DELETE; POST is not). Never use GET for actions that change data.</p>
+
+<h2>HTTPS</h2>
+<div class="box key"><b class="t">Key idea</b>HTTPS = HTTP inside a <b>TLS</b> encrypted tunnel. It gives <b>confidentiality</b> (nobody on the path can read it), <b>integrity</b> (can't be modified undetected) and <b>authentication</b> of the server (you're talking to the real site).</div>
+<ol>
+<li>Client connects to port 443 and says hello with supported ciphers.</li>
+<li>Server sends its <b>certificate</b> (contains its public key, signed by a trusted <b>Certificate Authority</b>).</li>
+<li>Client verifies the certificate (domain matches, not expired, signed by a trusted CA).</li>
+<li>They agree on a shared <b>session key</b> (asymmetric crypto to agree, then fast symmetric crypto for the data).</li>
+<li>HTTP requests now travel encrypted.</li>
+</ol>
+<p>Without HTTPS, anyone on the Wi-Fi or any hop can read passwords and cookies. HTTPS does not hide <em>which</em> domain you visit (visible via DNS/SNI) and does not mean the site is trustworthy, only that the connection is private and the site owns the domain.</p>
+
+<h2>A simple HTTP server</h2>
+<p>Remember: it's just a process listening on a port, parsing requests and writing responses.</p>
+<h3>Python (standard library)</h3>
+<pre><code># server.py
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/":
+            body = b"&lt;h1&gt;Hello, class!&lt;/h1&gt;"
+            self.send_response(200)
+        else:
+            body = b"Not found"
+            self.send_response(404)
+        self.send_header("Content-Type", "text/html")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+HTTPServer(("127.0.0.1", 8000), Handler).serve_forever()</code></pre>
+<pre><code>python3 server.py
+curl -i http://localhost:8000/         # 200
+curl -i http://localhost:8000/nope     # 404</code></pre>
+<h3>Node.js</h3>
+<pre><code>// server.js
+const http = require("http");
+http.createServer((req, res) =&gt; {
+  res.writeHead(200, {"Content-Type": "text/plain"});
+  res.end("Hello from " + req.url + "\n");
+}).listen(8000);</code></pre>
+<p>Try: <code>curl -v</code> shows raw headers; browser DevTools → Network tab shows every request/response.</p>
+
+<h2>Check your understanding</h2>
+<div id="quiz"></div>
+<h2>Think it through</h2>
+<div id="think"></div>
+<div class="pager"><a href="03-internet.html">← Internet</a><a href="05-auth.html">Next: Auth, Sessions, Cookies →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"HTTP is 'stateless'. This means:",options:["The server has no state at all","Each request is independent; the protocol doesn't remember earlier requests","It cannot send data","It only works offline"],answer:1,why:"Anything remembered across requests (logins, carts) needs extra mechanisms like cookies and sessions."},
+{q:"Which status code means the resource wasn't found?",options:["200","301","404","500"],answer:2,why:"404 Not Found (client asked for something that doesn't exist)."},
+{q:"A 500-range status indicates:",options:["The client sent a bad request","The server failed to handle a valid request","Redirect","Success"],answer:1,why:"5xx = server-side errors."},
+{q:"Which method should be used to read data without changing anything?",options:["POST","DELETE","GET","PUT"],answer:2,why:"GET is safe and idempotent."},
+{q:"Where do the Content-Type and Cookie live in an HTTP message?",options:["Headers","Body only","URL only","Status line"],answer:0,why:"Headers carry metadata."},
+{q:"HTTPS provides all EXCEPT:",options:["Encryption of traffic","Detection of tampering","Server identity verification","Guarantee that the site is honest/safe"],answer:3,why:"A malicious site can have a valid certificate for its own domain."},
+{q:"What does a TLS certificate prove?",options:["The site's content is correct","The server holds a key for that domain, vouched by a trusted CA","The user is logged in","The site is fast"],answer:1,why:"Certificates bind a public key to a domain name, signed by a CA."},
+{q:"Which default port does HTTPS use?",options:["80","22","443","8080"],answer:2,why:"HTTP is 80, HTTPS is 443."},
+{q:"In the simple Python server, what makes it keep running and answering requests?",options:["serve_forever() loops waiting for connections in a process","The browser","DNS","The compiler"],answer:0,why:"A server is a long-running process in a loop: accept → parse → respond."},
+{q:"Which request has a body typically?",options:["GET /index.html","POST /login with form data","HEAD /","Any redirect"],answer:1,why:"POST/PUT/PATCH carry data in the body."}
+];
+window.THINK=[
+{q:"A user reports 'the page shows 403'. What does that tell you and what would you check?",a:"The server understood the request but refuses it: the user is identified (or not) but not allowed. Check permissions/roles, IP restrictions, file permissions. Contrast with 401 (not authenticated)."},
+{q:"Why is putting a password in a GET query string a bad idea even over HTTPS?",a:"URLs get stored in browser history, server and proxy logs, and Referer headers. Use a POST body (and HTTPS)."},
+{q:"Extend the Python server to return JSON at /api/time. What headers and status would you set?",a:"<code>200</code>, <code>Content-Type: application/json</code>, body such as <code>{\"time\": \"...\"}</code> encoded as bytes, with correct <code>Content-Length</code>."}
+];
+</script>
+<script src="quiz.js"></script>
+</body></html>

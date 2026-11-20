@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>5. Authentication, Authorization, Sessions, Cookies</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="05"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>5. Authentication, Authorization, Sessions and Cookies</h1>
+<p class="lead">How a stateless protocol remembers who you are, and what you may do.</p>
+<section class="hf">
+<h2>🎟️ Start here: the concert wristband</h2>
+<div class="story"><b class="t">A story</b>
+At a music festival, you show your <b>photo ID</b> at the gate. A guard checks it and snaps a <b>wristband</b> on you. After that, nobody asks for your ID again. They just glance at the wristband.<br><br>
+Inside, different <em>colors</em> open different doors: general = main stage, VIP = lounge, crew = backstage.<br><br>
+• Showing ID at the gate = <b>authentication</b> (<em>who are you?</em>)<br>
+• Wristband colour deciding which doors open = <b>authorization</b> (<em>what may you do?</em>)<br>
+• The wristband itself = a <b>session</b> / <b>cookie</b> (so you needn't show ID again)</div>
+
+<pre class="fig">  ┌─ GATE (login) ──────────────┐      ┌─ INSIDE ──────────────────────┐
+  │ "username + password"       │      │ show wristband (cookie)        │
+  │ ✓ verified → issue wristband│ ───► │ guard checks colour (role):    │
+  └─────────────────────────────┘      │   VIP → lounge ✓  main ✓       │
+         AUTHENTICATION                │   general → lounge ✗ (403)     │
+                                       └───────────────────────────────┘
+                                                 AUTHORIZATION</pre>
+
+<h3>The problem cookies and sessions solve</h3>
+<p>Remember: HTTP forgets you after every request. Without a wristband you'd have to type your password on <em>every single click</em>. So:</p>
+<pre class="fig">  1. POST /login  {user: ana, password: ****}
+  2. Server checks password ✓. Creates a SESSION in its memory:
+         session "k9x2Q7..." → { user: ana, role: "member" }
+  3. ← 200 OK
+        Set-Cookie: session=k9x2Q7...; HttpOnly; Secure     (the wristband!)
+  4. Browser now automatically adds to EVERY later request:
+        Cookie: session=k9x2Q7...
+  5. Server looks up "k9x2Q7..." → ah, it's Ana.
+  6. Logout → server deletes the session; the wristband becomes worthless.</pre>
+<p><b>Cookie</b> = the little piece of data stored in your browser. <b>Session</b> = what the server remembers about you. The cookie is only the <em>claim ticket</em>; the valuables stay in the server's cloakroom.</p>
+
+<div class="brain"><b class="t">Brain power</b>A thief steals your wristband (session ID) without knowing your password. Can they get in? <em>Yes! The guard only checks the wristband. That's "session hijacking", and why we use HTTPS, <code>HttpOnly</code>, <code>Secure</code>, and short lifetimes.</em></div>
+
+<h3>Cookie settings, as plain English</h3>
+<table>
+<tr><th>Setting</th><th>It means</th></tr>
+<tr><td><code>HttpOnly</code></td><td>Page scripts can't read it, so injected evil JavaScript can't steal it</td></tr>
+<tr><td><code>Secure</code></td><td>Only ever sent over HTTPS (never on a postcard)</td></tr>
+<tr><td><code>SameSite</code></td><td>Don't attach it when the request comes from <em>another</em> website's page</td></tr>
+<tr><td><code>Max-Age</code></td><td>Expires after N seconds (wristband for one day only)</td></tr>
+</table>
+
+<h3>Authentication vs authorization: two real examples</h3>
+<table>
+<tr><th>Situation</th><th>Which one?</th><th>Typical code</th></tr>
+<tr><td>You type a wrong password</td><td>Authentication failed</td><td>401</td></tr>
+<tr><td>You're logged in as a student, and open /admin</td><td>Authorization failed</td><td>403</td></tr>
+<tr><td>You change <code>/orders/17</code> to <code>/orders/18</code> and see a stranger's order</td><td>Authorization check was <em>missing</em> (a classic bug!)</td><td>should be 403/404</td></tr>
+</table>
+
+<div class="fixit"><b>Don't store passwords!</b> Store a <em>hash</em>, a one-way scramble. At login, scramble the typed password the same way and compare. If a thief steals the database they get scrambles, not passwords. Use slow, salted hashes: <code>bcrypt</code>, <code>Argon2</code>. (Never plain text. Never MD5.)</div>
+
+<h3>Peek at your own cookies</h3>
+<p>Open any site you're logged in to: <b>F12 → Application → Cookies</b>. Find the long random string named something like <code>session</code> or <code>sid</code>. Notice the <code>HttpOnly</code> and <code>Secure</code> tick boxes. Don't share its value; it's your wristband.</p>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Why not just store the user's name in the cookie?</summary><p>Because users can edit cookies. Change <code>user=ana</code> to <code>user=admin</code> and you're admin. Store a long random ID that can't be guessed, and keep the real data on the server.</p></details>
+<details class="dumb"><summary>Q: Are cookies "tracking"?</summary><p>Cookies are just a tool. Login cookies are essential. Other cookies (from ad networks) are used for tracking, which is why sites ask for consent.</p></details>
+<details class="dumb"><summary>Q: What are JWTs I keep hearing about?</summary><p>A different kind of wristband: instead of an ID pointing to server memory, it's a signed note containing your details. The server checks the signature, no lookup needed. Trade-off: harder to cancel before it expires (module 17).</p></details>
+<details class="dumb"><summary>Q: Why does "Log in with Google" exist?</summary><p>So you don't give every site a new password. Google verifies you and tells the site "yes, this is Ana". More in module 17.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: authN or authZ?</summary>
+<p>(1) Scanning your fingerprint. (2) A teacher can edit grades but a student can only view them. (3) Entering a 6-digit code from your phone. (4) A blogger can delete only <em>their own</em> posts.<br><b>Answer:</b> (1) authN, (2) authZ, (3) authN (second factor), (4) authZ (ownership rule).</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li><b>Authentication</b>: who are you? <b>Authorization</b>: what may you do? In that order.</li>
+<li>HTTP is stateless; <b>cookies + sessions</b> give it memory.</li>
+<li>The cookie holds only a random ID. The session data lives on the server.</li>
+<li>Use <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite</code>; always HTTPS.</li>
+<li>Hash passwords with a slow, salted algorithm. Always check permissions on the <b>server</b>.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b><b>Authentication (AuthN)</b> = <em>who are you?</em> <b>Authorization (AuthZ)</b> = <em>what are you allowed to do?</em> Always in that order: identify, then permit.</div>
+
+<table>
+<tr><th></th><th>Authentication</th><th>Authorization</th></tr>
+<tr><td>Question</td><td>Who is this?</td><td>Can they do this?</td></tr>
+<tr><td>Example</td><td>Login with password, passkey, OTP</td><td>Admin may delete users; regular user may not</td></tr>
+<tr><td>Failure code</td><td><code>401 Unauthorized</code> (really "unauthenticated")</td><td><code>403 Forbidden</code></td></tr>
+<tr><td>Analogy</td><td>Showing ID at the building entrance</td><td>Which rooms your badge opens</td></tr>
+</table>
+
+<h3>Authentication factors</h3>
+<ul>
+<li>Something you <b>know</b> (password), <b>have</b> (phone, hardware key), <b>are</b> (fingerprint).</li>
+<li><b>MFA</b> combines two or more factors.</li>
+<li><b>Passwords must never be stored in plain text.</b> Store a salted hash made with a slow algorithm (bcrypt, scrypt, Argon2). At login, hash the attempt and compare.</li>
+</ul>
+
+<h3>Authorization models</h3>
+<ul>
+<li><b>Role-based (RBAC)</b>: users have roles (admin, editor, viewer); roles have permissions.</li>
+<li><b>Ownership</b>: "you can edit <em>your own</em> posts". Forgetting this check is a very common bug (IDOR): changing <code>/orders/17</code> to <code>/orders/18</code> shows someone else's order.</li>
+<li>Always enforce on the <b>server</b>. Hiding a button in the UI is not security.</li>
+</ul>
+
+<h2>Cookies</h2>
+<p>A <b>cookie</b> is a small piece of data the server asks the browser to store and send back on every later request to that site.</p>
+<pre><code>Server → Browser:  Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax; Max-Age=3600
+Browser → Server:  Cookie: session=abc123       (on every request to that domain)</code></pre>
+<table>
+<tr><th>Attribute</th><th>Purpose</th></tr>
+<tr><td><code>HttpOnly</code></td><td>JavaScript can't read it (limits theft via XSS)</td></tr>
+<tr><td><code>Secure</code></td><td>Only sent over HTTPS</td></tr>
+<tr><td><code>SameSite</code></td><td>Restricts cross-site sending (helps against CSRF)</td></tr>
+<tr><td><code>Max-Age / Expires</code></td><td>Lifetime; without it, a <em>session cookie</em> dies when the browser closes</td></tr>
+<tr><td><code>Domain / Path</code></td><td>Where the cookie applies</td></tr>
+</table>
+<p>Cookies are also used for preferences and tracking, not only login.</p>
+
+<h2>Sessions</h2>
+<div class="box key"><b class="t">Key idea</b>A <b>session</b> is server-side memory of a logged-in user across requests. The cookie holds only a random <b>session ID</b>; the real data stays on the server.</div>
+<ol>
+<li>User posts username + password (over HTTPS).</li>
+<li>Server verifies, creates a session record: <code>{id: "abc123", user: 42, expires: ...}</code> in memory/Redis/DB.</li>
+<li>Server responds with <code>Set-Cookie: session=abc123</code>.</li>
+<li>Browser sends the cookie with each request; server looks up the ID → knows it's user 42.</li>
+<li>Logout or expiry deletes the record; the ID becomes useless.</li>
+</ol>
+<h3>Session cookie vs token (JWT)</h3>
+<table>
+<tr><th></th><th>Server-side session</th><th>Token (e.g. JWT)</th></tr>
+<tr><td>State lives</td><td>On the server</td><td>Inside the signed token held by client</td></tr>
+<tr><td>Revoke instantly</td><td>Easy (delete record)</td><td>Hard (valid until expiry unless extra tracking)</td></tr>
+<tr><td>Scaling</td><td>Needs shared store</td><td>Servers need no lookup</td></tr>
+</table>
+<p>The session ID must be long, random and unguessable. An attacker who steals it can impersonate the user (<b>session hijacking</b>), which is why HTTPS, <code>HttpOnly</code>, and expiry matter.</p>
+
+<h3>Other mechanisms you'll meet</h3>
+<ul>
+<li><b>Basic auth / API keys</b> via the <code>Authorization</code> header.</li>
+<li><b>OAuth 2 / "Login with Google"</b>: authorization delegated to another provider; OpenID Connect adds authentication on top.</li>
+</ul>
+
+<h2>Check your understanding</h2>
+<div id="quiz"></div>
+<h2>Think it through</h2>
+<div id="think"></div>
+<div class="pager"><a href="04-http.html">← HTTP</a><a href="06-shell.html">Next: Command Line & Shell →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Logging in with a password is an example of:",options:["Authorization","Authentication","Encryption","Routing"],answer:1,why:"It proves who you are."},
+{q:"A logged-in regular user tries to open /admin and gets blocked. This is:",options:["An authentication failure","An authorization decision","A DNS issue","A cookie expiry"],answer:1,why:"The identity is known; permission is denied. Typically 403."},
+{q:"Which status fits 'you must log in first'?",options:["401","403","404","302 to /about"],answer:0,why:"401 = missing/invalid credentials (authentication). 403 = authenticated but not allowed."},
+{q:"Why is HTTP's statelessness a problem for logins, and what solves it?",options:["It isn't a problem","Server wouldn't know the user on the next request; cookies + sessions carry identity","DNS caching","Use UDP"],answer:1,why:"A session ID in a cookie links requests together."},
+{q:"What should the session cookie contain?",options:["The user's password","A random, unguessable session ID","The user's credit card","Nothing at all"],answer:1,why:"Keep real data server-side; the cookie is only a lookup key."},
+{q:"Which cookie flag stops JavaScript from reading the cookie?",options:["Secure","SameSite","HttpOnly","Path"],answer:2,why:"HttpOnly hides it from document.cookie, reducing XSS theft impact."},
+{q:"Which cookie flag keeps it off plain HTTP connections?",options:["Secure","HttpOnly","Expires","Domain"],answer:0,why:"Secure cookies are only sent over HTTPS."},
+{q:"How should passwords be stored?",options:["Plain text","Encrypted with a key kept in the same DB","Salted hash with bcrypt/Argon2","Base64"],answer:2,why:"Slow salted hashes resist cracking if the DB leaks; Base64 is not protection."},
+{q:"You change /orders/17 to /orders/18 and see another customer's order. The missing control is:",options:["Authentication","Authorization (ownership check)","HTTPS","DNS"],answer:1,why:"The user was logged in, but the server didn't verify they own order 18."},
+{q:"Which makes it easy to instantly log a user out everywhere?",options:["Server-side sessions: delete the record","Long-lived signed tokens with no tracking","Browser cache","DNS TTL"],answer:0,why:"Server-held state is easy to revoke; stateless tokens remain valid until expiry."}
+];
+window.THINK=[
+{q:"Why does the server, not the browser, need to enforce authorization?",a:"Anything on the client can be modified. A user can craft requests directly with curl and skip the UI. Only server-side checks are reliable."},
+{q:"A stolen session cookie lets someone act as you without knowing your password. List mitigations.",a:"HTTPS everywhere, <code>Secure</code> + <code>HttpOnly</code> + <code>SameSite</code>, short expiry, regenerate session ID on login, logout invalidates server-side, MFA for sensitive actions, avoid XSS."},
+{q:"Where would you draw the line between authentication and authorization for 'Login with Google'?",a:"Google authenticates the user and tells your app who they are; your app still decides authorization (what that user can do in your system). OAuth scopes also let the user authorize your app to access some of their Google data."}
+];
+</script>
+<script src="quiz.js"></script>
+</body></html>

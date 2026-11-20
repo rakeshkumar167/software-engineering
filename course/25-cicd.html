@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>25. CI/CD</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="25"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>25. CI/CD: Automated Tests and Releases</h1>
+<p class="lead">Make shipping boring, frequent and safe.</p>
+<section class="hf">
+<h2>🏭 Start here: the car factory assembly line</h2>
+<div class="story"><b class="t">A story</b>
+In an old-style workshop, one craftsman builds a whole car by hand, and when it's done, they hope it drives. A modern factory uses an <b>assembly line</b>: each stage does one job (weld, paint, test brakes), automatically, the same way every time. A defect is caught at the stage where it happens, not after the car is sold.<br><br>
+<b>CI/CD</b> is the assembly line for software. Every time someone pushes code, a robot runs the same checklist: build it, test it, scan it, and (if everything's green) ship it.</div>
+
+<h3>CI and CD, decoded</h3>
+<table>
+<tr><th>Term</th><th>Means</th><th>Plain English</th></tr>
+<tr><td><b>CI</b>: Continuous Integration</td><td>Merge small changes often; every change is built and tested automatically</td><td>"Does it still work when combined with everyone else's code?"</td></tr>
+<tr><td><b>CD</b>: Continuous Delivery</td><td>Every passing build is packaged and <em>ready</em> to release at a click</td><td>"Always shippable."</td></tr>
+<tr><td><b>CD</b>: Continuous Deployment</td><td>Every passing build goes to production <em>automatically</em></td><td>"Ship it. No human click."</td></tr>
+</table>
+
+<h3>A pipeline, stage by stage</h3>
+<pre class="fig">  git push
+     │
+     ▼
+  ┌─────────┐   ┌────────┐   ┌────────┐   ┌─────────┐   ┌─────────┐   ┌──────────┐
+  │ checkout│──►│ install│──►│ lint & │──►│  tests  │──►│  build  │──►│ deploy → │
+  │  code   │   │  deps  │   │ format │   │ (unit + │   │ (image) │   │ staging, │
+  └─────────┘   └────────┘   └────────┘   │ integr.)│   └─────────┘   │ then prod│
+                                          └─────────┘                 └──────────┘
+        ❌ if ANY stage fails → pipeline stops, author is told within minutes</pre>
+
+<h3>Your first pipeline (GitHub Actions)</h3>
+<p>Create <code>.github/workflows/ci.yml</code> in your repo:</p>
+<pre><code>name: CI
+on: [push, pull_request]            # run on every push and every PR
+jobs:
+  test:
+    runs-on: ubuntu-latest          # a fresh, clean machine every time
+    steps:
+      - uses: actions/checkout@v4                 # get the code
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt      # install deps
+      - run: pytest                               # run the tests (module 20)</code></pre>
+<p>Push it. Open the repo's <b>Actions</b> tab and watch ✅ or ❌ appear. That's it. You have CI.</p>
+<p>The clean machine matters: it proves the project builds from scratch, not just on your laptop.</p>
+
+<h3>Protect the main branch</h3>
+<p>Turn on <b>branch protection</b>: a pull request can only merge if the pipeline is green <em>and</em> a teammate approved. Now "I forgot to run the tests" is impossible.</p>
+
+<h3>Why small and frequent beats big and rare</h3>
+<pre class="fig">  Big release every 3 months:  500 changes → something broke → which one?? 😱
+  Deploy 10× a day:              ~3 changes → broke → it's one of THESE 3. Roll back. 🙂</pre>
+
+<div class="brain"><b class="t">Brain power</b>Your pipeline takes 45 minutes, so nobody waits for it and people merge anyway. What could you do? <em>Cache dependencies, run tests in parallel, run only affected tests, move slow end-to-end tests to nightly, use bigger runners. Aim for under ~10 minutes.</em></div>
+
+<h3>Habits of healthy pipelines</h3>
+<ul>
+<li><b>Build once, deploy that exact artifact everywhere</b> (config injected per environment, module 23).</li>
+<li><b>Red main = emergency</b>: fix or revert immediately.</li>
+<li>Secrets live in the CI's secret store; never print them in logs.</li>
+<li><b>Database migrations</b>: make changes compatible with the old and new app versions (add new column, deploy, <em>later</em> remove the old one), or a rollback breaks.</li>
+<li><b>Feature flags</b>: deploy code dark, enable it later.</li>
+<li><b>Versioning</b>: <code>MAJOR.MINOR.PATCH</code> (e.g. <code>2.4.1</code>): major = breaking, minor = new feature, patch = bug fix.</li>
+</ul>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Isn't deploying automatically dangerous?</summary><p>Less than manual, big-bang deploys, provided you have good tests, small changes, health checks, canary releases and one-click rollback. Safety comes from the automation.</p></details>
+<details class="dumb"><summary>Q: GitHub Actions, GitLab CI, Jenkins: which?</summary><p>Same idea: a config file in your repo describing steps. Use whichever matches where your code lives.</p></details>
+<details class="dumb"><summary>Q: What if tests are flaky?</summary><p>Fix or quarantine them quickly. If people learn "just re-run it," a real failure will get ignored.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: order the pipeline</summary>
+<p>Put in a sensible order: deploy to production, run unit tests, build container image, install dependencies, checkout code, deploy to staging.<br><b>Answer:</b> checkout → install deps → run unit tests → build image → deploy to staging (smoke test) → deploy to production.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>CI = every push is built and tested automatically; CD = passing builds are released automatically (or on approval).</li>
+<li>A pipeline is a repeatable sequence in a config file stored with the code.</li>
+<li>Small, frequent releases are safer and easier to roll back.</li>
+<li>Keep it fast, keep main green, protect secrets, build once, use flags and compatible migrations.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b><b>Continuous Integration (CI)</b>: every push is automatically built and tested. <b>Continuous Delivery/Deployment (CD)</b>: passing builds are automatically packaged and released (delivery = one approval click; deployment = fully automatic).</div>
+
+<h3>The pipeline</h3>
+<pre><code>push / pull request
+   → checkout code
+   → install dependencies (cached)
+   → lint + type check
+   → unit + integration tests
+   → build artifact / Docker image
+   → security scan
+   → deploy to staging → smoke tests
+   → (approval) → deploy to production → health check → (rollback if bad)</code></pre>
+
+<h3>Example (GitHub Actions)</h3>
+<pre><code># .github/workflows/ci.yml
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - run: pytest</code></pre>
+<p>Others: GitLab CI, Jenkins, CircleCI. All run the same idea: a clean machine executes your steps from a config file stored in the repo.</p>
+
+<h3>Why it matters</h3>
+<ul>
+<li>Catches breakage minutes after the change, while it's fresh in memory.</li>
+<li><b>Small, frequent releases</b> are less risky than big infrequent ones and easy to roll back.</li>
+<li>Same automated steps every time: no "forgot to run tests" or hand-typed deploy commands.</li>
+<li><b>Branch protection</b>: PR can't merge unless CI is green and a teammate approved.</li>
+</ul>
+
+<h3>Practices</h3>
+<ul>
+<li>Keep the pipeline <b>fast</b> (under ~10 minutes): cache dependencies, run tests in parallel. A broken pipeline is everyone's top priority.</li>
+<li><b>Build once, deploy the same artifact</b> to every environment, with config injected per environment (module 23).</li>
+<li>Store pipeline secrets in the CI secret store; never print them in logs.</li>
+<li><b>Feature flags</b> decouple deploy from release. <b>Database migrations</b> must be backwards-compatible with the previous app version for safe rollouts.</li>
+<li>Version releases (semantic versioning <code>MAJOR.MINOR.PATCH</code>) and keep a changelog; tag in git.</li>
+<li>Track DORA metrics: deploy frequency, lead time, change failure rate, time to restore.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="24-containers-cloud.html">← Containers & Cloud</a><a href="26-observability.html">Next: Observability →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What does CI do?",options:["Deploys by hand","Automatically builds and tests every change","Replaces git","Monitors production"],answer:1,why:"Fast feedback on every push."},
+{q:"Continuous Delivery vs Deployment?",options:["Same","Delivery needs a manual approval to release; deployment releases automatically","Deployment needs approval","Delivery is for databases"],answer:1,why:"Both keep code always releasable."},
+{q:"Where does the pipeline definition live?",options:["In someone's head","In a config file in the repository","On the production server","In the database"],answer:1,why:"Pipeline as code: versioned and reviewed."},
+{q:"Why 'build once, deploy everywhere'?",options:["Tested artifact is exactly what reaches prod","Saves disk","Looks neat","Not important"],answer:0,why:"Rebuilding per environment can create differences."},
+{q:"Why prefer small frequent releases?",options:["Fewer changes per release means easier diagnosis and rollback","More paperwork","Users like downtime","It's cheaper to test less"],answer:0,why:"Less risk per deploy."},
+{q:"Your CI is red on main. What's the right reaction?",options:["Ignore it","Fix or revert quickly; keep main green","Disable CI","Merge more"],answer:1,why:"Red main blocks everyone and hides new failures."},
+{q:"What does a feature flag allow?",options:["Deploying code without exposing the feature until enabled","Faster CPU","Free hosting","Bypassing tests"],answer:0,why:"Separates deployment from release."}
+];
+window.THINK=[
+{q:"Your pipeline takes 40 minutes and developers have stopped waiting for it. How do you improve it?",a:"Cache dependencies, parallelise test jobs, run only affected tests, move slow E2E to nightly or post-merge, use faster runners, remove redundant steps."},
+{q:"A migration drops a column, and deploy order is: migrate DB, then deploy app. What can go wrong?",a:"The old app version still running reads the dropped column → errors during rollout or rollback. Use expand/contract: add new, deploy code that uses both, then remove the old later."}
+];
+</script><script src="quiz.js"></script></body></html>

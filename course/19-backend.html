@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>19. Backend Frameworks</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="19"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>19. Backend Frameworks: Routing, Middleware, Templates, ORMs</h1>
+<p class="lead">Module 4's raw server, with the repetitive parts handled for you.</p>
+<section class="hf">
+<h2>🏭 Start here: building furniture from scratch vs a kit</h2>
+<div class="story"><b class="t">A story</b>
+In module 4 you wrote a web server by hand. It worked, but you had to parse URLs, set headers, handle each path with <code>if</code> statements, and encode every byte. Imagine doing that for 50 pages!<br><br>
+A <b>framework</b> is like a furniture kit with the frame, hinges and screws ready. You focus on <em>what makes your app special</em> ("what happens when someone posts an order") and the framework handles the repetitive plumbing (parsing, routing, JSON, errors, security basics).<br><br>
+<b>Library vs framework:</b> you <em>call</em> a library when you want. A framework <em>calls you</em>: you plug your code into its structure.</div>
+
+<h3>The journey of one request</h3>
+<pre class="fig">  Request: POST /orders
+     │
+     ▼
+  ┌─ MIDDLEWARE 1: log it ───────────────┐
+  ├─ MIDDLEWARE 2: parse JSON body ──────┤   (a series of checkpoints,
+  ├─ MIDDLEWARE 3: who's logged in? ─────┤    every request passes through)
+  └──────────────────────────────────────┘
+     ▼
+  ROUTER: "POST + /orders → create_order()"
+     ▼
+  HANDLER (your code): validate → save to DB → build response
+     ▼
+  ◄── Response: 201 Created {...}   (passes back through middleware: add headers…)</pre>
+
+<h3>1. Routing: connect URLs to your functions</h3>
+<pre><code>from flask import Flask, jsonify, request, abort
+app = Flask(__name__)
+
+pets = {1: {"id": 1, "name": "Rex"}}
+
+@app.get("/pets/&lt;int:pet_id&gt;")           # URL pattern, &lt;int:..&gt; captures a number
+def get_pet(pet_id):
+    pet = pets.get(pet_id)
+    if pet is None:
+        abort(404)
+    return jsonify(pet)
+
+@app.post("/pets")
+def add_pet():
+    data = request.get_json()
+    if not data or "name" not in data:
+        return jsonify(error="name is required"), 400
+    new_id = max(pets) + 1
+    pets[new_id] = {"id": new_id, "name": data["name"]}
+    return jsonify(pets[new_id]), 201
+
+# run:  flask run     then try:  curl localhost:5000/pets/1</code></pre>
+<p>Compare to module 4: no manual header-writing, no byte encoding. Same ideas, far less typing. Express (Node) looks almost identical:</p>
+<pre><code>app.get("/pets/:id", (req, res) =&gt; {
+  const pet = pets[req.params.id];
+  if (!pet) return res.status(404).json({ error: "not found" });
+  res.json(pet);
+});</code></pre>
+
+<h3>2. Middleware: airport security for requests</h3>
+<p>Code that runs for <b>every</b> request before (or after) your handler: logging, checking login, rate limiting, CORS, catching crashes and turning them into clean 500 responses. <b>Order matters:</b> authentication must happen before handlers that need a user.</p>
+<pre><code>@app.before_request
+def require_login():
+    if request.path.startswith("/admin") and "user_id" not in session:
+        abort(401)</code></pre>
+
+<h3>3. Templates: HTML with holes</h3>
+<pre><code>&lt;!-- profile.html (Jinja) --&gt;
+&lt;h1&gt;Hello, {{ user.name }}!&lt;/h1&gt;       &lt;!-- auto-escaped: safe from XSS --&gt;
+{% for order in orders %}
+  &lt;li&gt;{{ order.total }}&lt;/li&gt;
+{% endfor %}
+
+@app.get("/profile")
+def profile():
+    return render_template("profile.html", user=current_user(), orders=load_orders())</code></pre>
+<p>Server-rendered pages (templates) or JSON for a JavaScript front-end (module 12/13): both are common.</p>
+
+<h3>4. ORM: objects instead of SQL</h3>
+<pre><code>class Pet(db.Model):                       # a class = a table
+    id   = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+
+rex = Pet(name="Rex"); db.session.add(rex); db.session.commit()   # INSERT
+dogs = Pet.query.filter_by(name="Rex").all()                         # SELECT</code></pre>
+
+<h3>How to organise the code</h3>
+<pre class="fig">  app/
+   ├── routes/     ← HTTP stuff only: read request, return response (THIN)
+   ├── services/   ← business rules: "can this coupon be used?"
+   ├── models/     ← database tables
+   ├── templates/  ← HTML
+   └── config.py   ← settings from environment variables</pre>
+<p>Keep route handlers <b>thin</b>: they translate HTTP into function calls. Business logic in services is reusable and easy to test without a web server.</p>
+
+<div class="brain"><b class="t">Brain power</b>Your app works with <code>flask run</code> on your laptop. Why isn't that good enough in production? <em>The built-in dev server is single-purpose, not hardened or efficient for many users. Use a production server (gunicorn / uvicorn / Node cluster) behind a reverse proxy (module 16).</em></div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Which framework should I learn?</summary><p>The one matching your language: Python → Flask/FastAPI/Django, JavaScript → Express/NestJS, Java → Spring, Ruby → Rails, PHP → Laravel. The concepts are 95% the same.</p></details>
+<details class="dumb"><summary>Q: What's the difference between Flask and Django?</summary><p>Flask = small and flexible, you choose the parts. Django = "batteries included": ORM, admin panel, auth, forms out of the box.</p></details>
+<details class="dumb"><summary>Q: Where does validation belong?</summary><p>At the edge of your app: check types, lengths and required fields as soon as data arrives (libraries like Pydantic or Zod help).</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: add an endpoint</summary>
+<p>Add <code>DELETE /pets/&lt;id&gt;</code> to the Flask example: return 204 if deleted, 404 if missing.<br><b>Answer:</b><pre><code>@app.delete("/pets/&lt;int:pet_id&gt;")
+def delete_pet(pet_id):
+    if pet_id not in pets:
+        abort(404)
+    del pets[pet_id]
+    return "", 204</code></pre></p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Frameworks handle repetitive web plumbing so you write business logic.</li>
+<li>Request flow: middleware → router → handler → response.</li>
+<li>Routing maps method+URL to functions; middleware handles cross-cutting jobs.</li>
+<li>Templates (auto-escaped) or JSON APIs; ORMs map tables to classes.</li>
+<li>Keep handlers thin, config in env vars, and use a production server in production.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A <b>framework</b> (Flask, FastAPI, Django, Express, Spring, Rails) provides the plumbing every web app needs, so you write only the business logic. Libraries are called by you; frameworks call <em>your</em> code.</div>
+
+<h3>The request pipeline</h3>
+<pre><code>Request → [middleware: log, auth, parse body] → router → handler → [middleware: headers, compress] → Response
+                                                           └→ database / other services</code></pre>
+
+<h3>Routing: URL + method → function</h3>
+<pre><code># Flask
+from flask import Flask, jsonify, request, abort
+app = Flask(__name__)
+
+@app.get("/users/&lt;int:user_id&gt;")
+def get_user(user_id):
+    user = db.find_user(user_id)
+    if not user:
+        abort(404)
+    return jsonify(user)
+
+@app.post("/users")
+def create_user():
+    data = request.get_json()
+    if "email" not in data:
+        return jsonify(error="email required"), 400
+    return jsonify(db.create_user(data)), 201</code></pre>
+<pre><code>// Express (Node)
+app.get("/users/:id", async (req, res) =&gt; {
+  const user = await db.findUser(req.params.id);
+  if (!user) return res.status(404).json({ error: "not found" });
+  res.json(user);
+});</code></pre>
+
+<h3>Middleware</h3>
+<p>Functions that run <b>before/after</b> handlers for every request: logging, authentication (read the session cookie, attach <code>current_user</code>), CORS, rate limits, error handling, compression. Order matters.</p>
+
+<h3>Templates vs JSON APIs</h3>
+<ul>
+<li><b>Server-side rendering</b>: handler fills an HTML template (Jinja, EJS) and returns a page. Great for SEO and simple sites; templates auto-escape output (XSS protection).</li>
+<li><b>API + SPA</b>: server returns JSON, a JS frontend renders (module 12/13). Many apps mix both.</li>
+</ul>
+
+<h3>ORM and project layout</h3>
+<pre><code>class User(Model):                # table → class
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True)
+
+user = session.query(User).filter_by(email="ana@example.com").first()</code></pre>
+<ul>
+<li>Separate concerns: <b>routes</b> (HTTP), <b>services</b> (business rules), <b>models</b> (data). Handlers stay thin.</li>
+<li><b>Validate input</b> (FastAPI/Pydantic, Zod) at the boundary.</li>
+<li><b>Configuration</b> comes from environment variables, not code (module 23).</li>
+<li>In production run behind a real server (gunicorn, uvicorn, Node cluster) and reverse proxy; the dev server isn't built for load.</li>
+<li>Choose a mainstream, well-documented framework for your language; the concepts transfer.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="18-databases.html">← Databases</a><a href="20-testing.html">Next: Testing →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What does a router do in a web framework?",options:["Forwards IP packets","Maps method + URL to a handler function","Encrypts data","Hashes passwords"],answer:1,why:"Not the network router; the app's URL dispatch."},
+{q:"Middleware is code that:",options:["Runs on every request before/after the handler","Is the database","Replaces HTTP","Runs only at startup"],answer:0,why:"Cross-cutting concerns like auth and logging."},
+{q:"Why does middleware order matter?",options:["It doesn't","e.g. authentication must run before handlers that need the user","Alphabetical rule","Only for speed"],answer:1,why:"Each layer sees the request after the previous one."},
+{q:"An ORM lets you:",options:["Work with database rows as objects in your language","Skip the database","Write HTML","Route packets"],answer:0,why:"It maps tables to classes (but still understand the SQL it generates)."},
+{q:"Why keep handlers thin?",options:["Fewer files","Business logic in services is reusable and testable","Required","Faster"],answer:1,why:"Separation of concerns."},
+{q:"Where should the database password live?",options:["In source code","In environment/secret config","In the HTML","In a cookie"],answer:1,why:"Keeps secrets out of git."},
+{q:"Why not use the framework's dev server in production?",options:["It's not designed for concurrency, security and stability under load","It costs money","It lacks routes","It can't read JSON"],answer:0,why:"Use gunicorn/uvicorn/etc. behind a reverse proxy."}
+];
+window.THINK=[
+{q:"Sketch the layers a POST /orders request goes through in your framework.",a:"Reverse proxy → web server → middleware (log, parse JSON, authenticate) → route → handler validates input → service applies rules (stock, price) → ORM/DB transaction → handler returns 201 JSON → response middleware."},
+{q:"Library vs framework: explain the difference in who controls the flow.",a:"You call a library. A framework calls your code at defined points (inversion of control)."}
+];
+</script><script src="quiz.js"></script></body></html>

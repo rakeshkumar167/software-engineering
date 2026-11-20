@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>10. Debugging</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="10"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>10. Debugging and Reading Error Messages</h1>
+<p class="lead">Finding out why the program does not do what you think it does.</p>
+<section class="hf">
+<h2>🔍 Start here: the detective</h2>
+<div class="story"><b class="t">A story</b>
+A detective doesn't randomly accuse people. They <b>look at the scene</b>, <b>list suspects</b>, <b>test each theory</b> against the evidence, and <b>eliminate</b> until one explanation fits.<br><br>
+Debugging is the same job. Your program's "crime" is that it doesn't do what you expected. A bad programmer changes code randomly and hopes. A good one <b>investigates</b>.</div>
+
+<h3>The 6-step detective method</h3>
+<pre class="fig">  1. REPRODUCE   ─ make the bug happen on demand
+  2. READ        ─ read the error message fully (clues!)
+  3. NARROW      ─ where does it start going wrong? (cut the search area in half)
+  4. HYPOTHESIS  ─ "I think X is None here" → test it (print / debugger)
+  5. FIX         ─ fix the CAUSE, not the symptom
+  6. PROTECT     ─ add a test so it can't sneak back</pre>
+
+<h3>Case file #1: reading a stack trace</h3>
+<pre><code>Traceback (most recent call last):
+  File "shop.py", line 22, in &lt;module&gt;
+    print(average_price(cart))
+  File "shop.py", line 9, in average_price
+    return sum(prices) / len(prices)
+ZeroDivisionError: division by zero</code></pre>
+<div class="convo">
+<p class="a"><b>Step 1: read the LAST line first</b>ZeroDivisionError. Something divided by zero.</p>
+<p class="b"><b>Step 2: find the nearest line in YOUR code</b>shop.py line 9: <code>len(prices)</code> must be 0.</p>
+<p class="a"><b>Step 3: ask "how did we get here?"</b>Line 22 called it with an empty cart!</p>
+<p class="b"><b>Fix</b>Handle the empty cart: <code>if not prices: return 0</code>.</p>
+</div>
+
+<h3>Case file #2: the sneaky logic bug (no error at all!)</h3>
+<pre><code>def is_adult(age):
+    return age &gt; 18      # Bug: 18-year-olds are adults too!</code></pre>
+<p>No crash, just wrong answers. Logic bugs don't announce themselves. You find them by <b>checking your assumptions</b>: print the value, try the edge cases (17, 18, 19), compare with what you expected.</p>
+
+<h3>Your detective toolkit</h3>
+<table>
+<tr><th>Tool</th><th>How</th><th>Best for</th></tr>
+<tr><td>Print debugging</td><td><code>print("cart =", cart)</code></td><td>Quick look at a value</td></tr>
+<tr><td>Debugger</td><td>Set a <b>breakpoint</b>; the program pauses; inspect everything; step line by line</td><td>Understanding flow in depth</td></tr>
+<tr><td>Browser DevTools (F12)</td><td>Console errors, Network requests, Elements</td><td>Web bugs</td></tr>
+<tr><td>Logs</td><td>Messages the app writes while running</td><td>Production bugs you can't pause</td></tr>
+<tr><td>Bisecting</td><td>Test the middle commit/line: bad or good? Halve repeatedly</td><td>"It worked yesterday"</td></tr>
+<tr><td>Rubber duck 🦆</td><td>Explain your code out loud, line by line</td><td>Spotting your own wrong assumption</td></tr>
+</table>
+
+<div class="brain"><b class="t">Brain power</b>"It works on my machine!" List 4 things that might differ on the other machine. <em>Language/library versions, environment variables, operating system, the data, file paths, permissions, time zone, network.</em></div>
+
+<h3>Debugging mindset</h3>
+<ul>
+<li>It's <b>never</b> "the computer is broken". The computer does exactly what the code says. Find the gap between what you <em>think</em> the code says and what it <em>actually</em> says.</li>
+<li>Change <b>one thing at a time</b>, or you won't know what helped.</li>
+<li>Search the exact error message. Thousands have hit it before you.</li>
+<li>Take a break. Surprisingly effective.</li>
+</ul>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Is print debugging "unprofessional"?</summary><p>No! Everyone uses it. Debuggers are better for complex cases, but a well-placed print is often the fastest clue.</p></details>
+<details class="dumb"><summary>Q: What is the difference between a bug and an error?</summary><p>An error is when the program complains. A bug is any behaviour that doesn't match what was intended. Some bugs raise errors; the nastiest ones don't.</p></details>
+<details class="dumb"><summary>Q: Why do I need a test after I fixed the bug?</summary><p>Because bugs return when someone changes the code later. A test is a permanent alarm for this exact mistake.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: find the bug</summary>
+<p><pre><code>def average(nums):
+    total = 0
+    for n in nums:
+        total += n
+    return total / len(nums) + 1
+</code></pre>The average of [2, 4] is printing 4.0 but should be 3.0. What's the bug and how would you find it?<br><b>Answer:</b> a stray <code>+ 1</code> at the end. Find it by printing <code>total</code> and <code>len(nums)</code> (6 and 2, so 3.0 is right so far), which shows the extra step is the faulty one. Then add a test: <code>assert average([2,4]) == 3</code>.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Debugging = investigation: reproduce, read, narrow, hypothesise, fix, protect.</li>
+<li>Read stack traces from the <b>last line up</b>; find the first frame in your code.</li>
+<li>Logic bugs have no error. Check assumptions with prints, breakpoints, edge cases.</li>
+<li>Fix root causes, change one thing at a time, add a regression test.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Debugging is the <b>scientific method</b>: observe, form a hypothesis, test it, repeat. Guessing and changing random things is the slow path.</div>
+
+<h3>A repeatable process</h3>
+<ol>
+<li><b>Reproduce</b> the bug reliably. If you can't trigger it, you can't know you fixed it.</li>
+<li><b>Read the error</b> fully. Message says <em>what</em>; stack trace says <em>where</em>.</li>
+<li><b>Narrow down</b>: which input, which function, which commit? Bisect: cut the problem space in half repeatedly (<code>git bisect</code> does this over history).</li>
+<li><b>Form a hypothesis</b> and test it with a print, a log line, a debugger or a tiny test.</li>
+<li><b>Fix the cause</b>, not the symptom.</li>
+<li><b>Add a test</b> so it never returns.</li>
+</ol>
+
+<h3>Reading a stack trace</h3>
+<pre><code>Traceback (most recent call last):
+  File "app.py", line 20, in &lt;module&gt;
+    print(average([]))
+  File "app.py", line 12, in average
+    return sum(xs) / len(xs)
+ZeroDivisionError: division by zero</code></pre>
+<p>Read the <b>last line first</b> (the error type and message), then the nearest frame in <em>your</em> code (line 12). The frames above show how you got there. Search the exact error message; most errors have been met before.</p>
+
+<h3>Tools</h3>
+<ul>
+<li><b>Print / log debugging</b>: quick; print values and which branch ran.</li>
+<li><b>Debugger</b>: set a <b>breakpoint</b>, pause, inspect variables, step line by line (VS Code, <code>pdb</code>, browser DevTools).</li>
+<li><b>Browser DevTools</b>: Console (errors), Network (requests/responses), Elements.</li>
+<li><b>Rubber duck</b>: explain the code out loud, line by line. Often reveals the flaw.</li>
+</ul>
+
+<h3>Common bug kinds</h3>
+<table>
+<tr><th>Kind</th><th>Example</th></tr>
+<tr><td>Syntax</td><td>Missing colon or bracket. The language refuses to run.</td></tr>
+<tr><td>Runtime</td><td>Crash while running: null access, divide by zero, file not found</td></tr>
+<tr><td>Logic</td><td>Runs fine but wrong result: off-by-one, wrong operator</td></tr>
+<tr><td>Environment</td><td>"Works on my machine": different version, config, missing env var</td></tr>
+</table>
+<div class="box">Logic and environment bugs don't give an error, so check your <b>assumptions</b>: print what you believe is true.</div>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="09-dsa.html">← Data Structures</a><a href="11-data-formats.html">Next: Files & Data Formats →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What should be your first step with a bug report?",options:["Rewrite the code","Reproduce it reliably","Blame the user","Deploy a guess"],answer:1,why:"Without reproduction you can't verify a fix."},
+{q:"Where in a Python traceback is the actual error type and message?",options:["First line","Last line","Middle","Not shown"],answer:1,why:"Read the last line first, then work up to your own code."},
+{q:"The program runs but outputs the wrong total. This is most likely a:",options:["Syntax error","Logic error","Network error","Permissions error"],answer:1,why:"No crash, just incorrect behaviour."},
+{q:"What is a breakpoint?",options:["A crash","A marker where execution pauses so you can inspect state","A comment","A test"],answer:1,why:"Debuggers stop at breakpoints for inspection and stepping."},
+{q:"'Works on my machine' usually points to:",options:["Logic error only","Environment differences (versions, config, data)","Bad keyboard","DNS"],answer:1,why:"Compare versions, env vars and inputs between machines."},
+{q:"Why write a test after fixing a bug?",options:["Required by law","To prevent the bug from silently coming back","To slow down","It's not useful"],answer:1,why:"A regression test locks in the fix."},
+{q:"The best fix is one that:",options:["Hides the error message","Addresses the root cause","Wraps everything in try/except and ignores it","Restarts the server"],answer:1,why:"Suppressing symptoms leaves the defect to cause problems later."}
+];
+window.THINK=[
+{q:"A page worked yesterday, today it's broken. You have 40 commits since. How do you find the culprit quickly?",a:"Bisect: test the middle commit, decide good/bad, halve the range each time. <code>git bisect</code> automates it; ~6 steps for 40 commits."},
+{q:"You get 'TypeError: cannot read property name of undefined'. List three questions you ask.",a:"Which variable is undefined? Where was it supposed to be set (API call failed? wrong key? timing)? What does the data actually look like at that point (log it)?"}
+];
+</script><script src="quiz.js"></script></body></html>

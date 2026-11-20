@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>20. Testing</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="20"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>20. Testing and Test-Driven Development</h1>
+<p class="lead">Code that checks your code, so you can change things without fear.</p>
+<section class="hf">
+<h2>🧪 Start here: the smoke detector</h2>
+<div class="story"><b class="t">A story</b>
+You wouldn't build a house and then <em>manually sniff for smoke</em> every night. You install smoke detectors that watch 24/7 and shout when something's wrong.<br><br>
+<b>Automated tests</b> are smoke detectors for your code. Small programs that run your code with known inputs and shout if the answer is wrong. Change something at 2 a.m. and within seconds you know whether you broke anything, instead of finding out from an angry customer.</div>
+
+<h3>Your first test (the whole idea in 8 lines)</h3>
+<pre><code># discount.py
+def price_after_discount(price, percent):
+    return price - price * percent / 100
+
+# test_discount.py        run with:  pytest
+from discount import price_after_discount
+
+def test_ten_percent_off():
+    assert price_after_discount(200, 10) == 180
+
+def test_zero_discount_changes_nothing():
+    assert price_after_discount(50, 0) == 50</code></pre>
+<p>Each test follows <b>Arrange → Act → Assert</b>: set up the inputs, call the code, check the result. If an <code>assert</code> is false, the test fails and tells you exactly which.</p>
+<pre class="fig">  $ pytest
+  test_discount.py ..                        [100%]
+  2 passed in 0.01s            ✅
+
+  (someone edits the formula by mistake)
+  test_discount.py F.
+  assert 190.0 == 180          ❌  ← caught immediately, with the exact line</pre>
+
+<h3>What to test: think like a mischievous user</h3>
+<p>The happy path is easy. Bugs hide at the <b>edges</b>:</p>
+<ul>
+<li>Empty: <code>[]</code>, <code>""</code>, <code>None</code></li>
+<li>Zero, negative, huge numbers</li>
+<li>Exactly on the boundary (the 18th birthday: is 18 an adult?)</li>
+<li>Duplicates, wrong types, missing fields</li>
+</ul>
+<pre><code>import pytest
+def test_discount_over_100_is_rejected():
+    with pytest.raises(ValueError):
+        price_after_discount(100, 150)      # this test FAILS now; it shows the code has no check!</code></pre>
+
+<h3>The test pyramid: lots of small, few big</h3>
+<pre class="fig">            /\
+           /E2E\         few: drive a real browser through signup→checkout (slow, brittle)
+          /──────\
+         /integr. \      some: several parts together, e.g. handler + real test database
+        /──────────\
+       /   UNIT     \    many: one function at a time (milliseconds)
+      /──────────────\</pre>
+
+<h3>Fakes: swap out the slow, risky parts</h3>
+<p>Your checkout code charges a real credit card. In a test you don't want that! Replace the payment service with a <b>fake</b> (a "stunt double"):</p>
+<pre><code>class FakePayments:
+    def __init__(self): self.charged = []
+    def charge(self, user, amount): self.charged.append((user, amount)); return True
+
+def test_checkout_charges_the_total():
+    pay = FakePayments()
+    checkout(cart=[10, 20], user="ana", payments=pay)   # inject the fake
+    assert pay.charged == [("ana", 30)]</code></pre>
+<p>Passing the dependency in as a parameter (<b>dependency injection</b>) is what makes this easy.</p>
+
+<h3>TDD: write the test first (Red → Green → Refactor)</h3>
+<pre class="fig">  🔴 RED     write a tiny test for the next behaviour. Run it. It FAILS (as expected).
+  🟢 GREEN   write the simplest code that makes it pass.
+  🔵 REFACTOR clean up the code; tests protect you. Repeat.</pre>
+<p>Benefit: you think about <em>what</em> the code should do before <em>how</em>, and you always have a working safety net.</p>
+
+<div class="brain"><b class="t">Brain power</b>Your project has "100% test coverage" yet a bug slips through. How? <em>Coverage only measures which lines <b>ran</b>, not whether the tests <b>checked the right things</b>. A test with no assertions can give 100% coverage and catch nothing.</em></div>
+
+<h3>Good-test checklist</h3>
+<ul>
+<li><b>Fast</b> and <b>independent</b>: order and time of day don't matter.</li>
+<li>Clear names: <code>test_expired_coupon_is_rejected</code>.</li>
+<li>One reason to fail.</li>
+<li>Run automatically on every push (CI, module 25).</li>
+<li><b>Flaky tests</b> (sometimes pass, sometimes fail) destroy trust: fix or delete them.</li>
+<li>Every bug fixed → add a test so it can't return.</li>
+</ul>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Doesn't writing tests slow me down?</summary><p>At first, a little. Soon it's much faster: no manual re-clicking, fearless refactoring, bugs caught in seconds instead of days.</p></details>
+<details class="dumb"><summary>Q: Do I need tests for everything?</summary><p>Focus on important logic, tricky edge cases and anything that has broken before. Trivial one-liners can go without.</p></details>
+<details class="dumb"><summary>Q: What's the difference between a mock, stub and fake?</summary><p>Rough guide: a <b>stub</b> returns canned answers, a <b>mock</b> also records/verifies how it was called, a <b>fake</b> is a simple working replacement (e.g. an in-memory database).</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: write 3 test cases</summary>
+<p>For <code>is_palindrome(s)</code> (reads the same backwards), list three tests including an edge case.<br><b>Answer:</b> <code>"level"</code> → True; <code>"hello"</code> → False; edge: <code>""</code> → True (or decide and document); also <code>"A man a plan..."</code> (case/spaces) and <code>"a"</code> → True.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Tests are automatic smoke detectors for code; Arrange-Act-Assert.</li>
+<li>Test the edges, not just the happy path.</li>
+<li>Many unit tests, fewer integration tests, very few end-to-end tests.</li>
+<li>Use fakes for slow/external things; TDD = red, green, refactor.</li>
+<li>Coverage shows what ran, not what's verified. Add a test for every fixed bug.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>An automated <b>test</b> runs your code with known inputs and checks the output. A good suite catches regressions in seconds instead of users catching them in production.</div>
+
+<h3>A unit test</h3>
+<pre><code># pricing.py
+def total(prices, tax=0.1):
+    return round(sum(prices) * (1 + tax), 2)
+
+# test_pricing.py  (run: pytest)
+from pricing import total
+
+def test_total_adds_tax():
+    assert total([10, 20]) == 33.0
+
+def test_empty_cart_is_zero():
+    assert total([]) == 0
+
+def test_custom_tax():
+    assert total([100], tax=0.2) == 120.0</code></pre>
+<p>Structure: <b>Arrange</b> (set up), <b>Act</b> (call), <b>Assert</b> (check). Name tests by behaviour. Test <b>edge cases</b>: empty, zero, negative, huge, <code>None</code>, duplicates, invalid input.</p>
+
+<h3>The test pyramid</h3>
+<table>
+<tr><th>Level</th><th>Tests</th><th>Speed / count</th></tr>
+<tr><td>Unit</td><td>One function/class in isolation</td><td>Milliseconds; many</td></tr>
+<tr><td>Integration</td><td>Several parts together (handler + real test DB)</td><td>Slower; moderate</td></tr>
+<tr><td>End-to-end (E2E)</td><td>Whole app via a real browser (Playwright, Cypress)</td><td>Slowest, flaky-prone; few, covering key journeys</td></tr>
+</table>
+
+<h3>Test doubles</h3>
+<p>Replace slow, unreliable or costly dependencies (payment API, email, clock) with <b>mocks/stubs/fakes</b> so tests are fast and deterministic. Don't over-mock: tests that only verify mocks prove nothing.</p>
+
+<h3>TDD: Red → Green → Refactor</h3>
+<ol><li><b>Red</b>: write a failing test for the next small behaviour.</li><li><b>Green</b>: write the simplest code to pass.</li><li><b>Refactor</b>: clean up with tests as a safety net.</li></ol>
+<p>Benefits: forces clear requirements, testable design, instant feedback.</p>
+
+<h3>Good tests are</h3>
+<ul>
+<li><b>Fast, independent, repeatable, self-checking</b>. Order and time of day must not matter.</li>
+<li>Failing for one reason, with a message telling you what broke.</li>
+<li><b>Coverage</b> shows lines executed, not correctness. 100% coverage with weak assertions is false comfort.</li>
+<li>Run automatically on every push (CI, module 25). <b>Flaky tests</b> (sometimes fail) should be fixed or removed quickly.</li>
+<li>Every fixed bug gets a regression test (module 10).</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="19-backend.html">← Backend</a><a href="21-os.html">Next: OS Concepts →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What is a regression?",options:["A new feature","Something that used to work and broke","A slow test","A merge"],answer:1,why:"Tests protect against regressions."},
+{q:"Arrange-Act-Assert describes:",options:["Git workflow","The structure of a test","Deployment","SQL"],answer:1,why:"Set up, execute, verify."},
+{q:"Which tests should you have the most of?",options:["End-to-end","Unit tests","Manual tests","None"],answer:1,why:"Fast and cheap at the base of the pyramid."},
+{q:"Why mock a payment API in tests?",options:["To make tests fast, deterministic, and not charge cards","Mocks are always better","It's required by law","To test the real API"],answer:0,why:"External calls are slow and flaky."},
+{q:"TDD cycle order:",options:["Green, Red, Refactor","Red, Green, Refactor","Refactor, Red, Green","Red, Refactor, Green"],answer:1,why:"Failing test → pass → clean up."},
+{q:"100% code coverage means:",options:["No bugs","Every line ran during tests, not that behaviour is correctly verified","Fast tests","Safe deploys"],answer:1,why:"Coverage measures execution, not assertion quality."},
+{q:"A test passes on Monday, fails Tuesday with no code change. It is:",options:["Flaky, perhaps dependent on time or order","Perfect","A unit test","An E2E test by definition"],answer:0,why:"Hidden dependency on date, randomness, ordering or external state."},
+{q:"After fixing a bug you should:",options:["Add a test that fails without the fix","Delete logs","Skip tests","Rename the bug"],answer:0,why:"Prevents it coming back."}
+];
+window.THINK=[
+{q:"List 5 test cases for a function is_valid_email(s).",a:"Valid normal address, missing @, missing domain, empty string, spaces, very long string, unicode, multiple @, <code>None</code>."},
+{q:"Why might a team prefer a few E2E tests over many?",a:"E2E tests are slow, brittle (UI changes) and hard to debug. Cover only critical flows (signup, checkout) and push detail down to unit/integration tests."}
+];
+</script><script src="quiz.js"></script></body></html>

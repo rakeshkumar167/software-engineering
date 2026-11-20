@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>17. OAuth 2, OIDC, JWT, Passwords, MFA</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="17"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>17. OAuth 2, OpenID Connect, JWT, Password Hashing and MFA</h1>
+<p class="lead">Module 5 in depth: how modern apps really log people in.</p>
+<section class="hf">
+<h2>🔑 Start here: the hotel valet key</h2>
+<div class="story"><b class="t">A story</b>
+When you hand your car to a hotel valet you don't give them your <b>master key</b>. You give a <b>valet key</b>: it starts the engine and drives, but can't open the glovebox or trunk, and it's useless once you collect the car.<br><br>
+<b>OAuth 2</b> is a valet key for your online accounts. Example: a photo-printing app wants to read your Google Photos. You <em>don't</em> give it your Google password. Instead Google hands the app a limited, temporary <b>token</b>: "may read photos, nothing else, for one hour."</div>
+
+<h3>The OAuth dance (authorization code flow)</h3>
+<pre class="fig">  You          PrintApp                     Google
+   │ "connect Google Photos"
+   │ ──────────►│
+   │            │ ── redirect to Google ───────►  1. "PrintApp wants: read photos"
+   │ ◄──────────┴────────────────────────────────    Do you allow?  [Allow] [Deny]
+   │ you log in AT GOOGLE and click Allow ──────►
+   │ ◄── Google redirects back to PrintApp with a one-time CODE ──
+   │            │ ── CODE + app secret ────────► 2. server-to-server swap
+   │            │ ◄── ACCESS TOKEN (valid ~1h) ──
+   │            │ ── GET /photos  Bearer token ► 3. API checks token & scope
+   │            │ ◄── your photos ───────────────</pre>
+<ul>
+<li><b>Scope</b>: exactly what's allowed ("photos.read"). Least privilege.</li>
+<li><b>Access token</b>: short-lived key to call the API. <b>Refresh token</b>: longer-lived, used to quietly get new access tokens.</li>
+<li>PrintApp <b>never saw your Google password</b>. And you can revoke it later.</li>
+</ul>
+
+<h3>"Sign in with Google" is OpenID Connect (OIDC)</h3>
+<p>OAuth answers "<em>what may this app access?</em>" (authorization). OIDC adds "<em>who is this person?</em>": Google also returns an <b>ID token</b> saying "this is Ana, ana@gmail.com, verified." Your app trusts Google's word and creates its own session (module 5).</p>
+
+<h3>JWT: a tamper-evident note</h3>
+<p>A JSON Web Token has three parts joined by dots:</p>
+<pre class="fig">  eyJhbGciOi...  .  eyJzdWIiOiI0MiIsInJvbGUiOiJhZG1pbiJ9  .  SflKxwRJSMeKKF2Q...
+  └ header ─────┘   └ payload (the claims) ─────────────┘     └ signature ──────┘
+                      {"sub":"42","role":"admin","exp":1700000000}</pre>
+<div class="brain"><b class="t">Brain power</b>Is a JWT encrypted? <em>No! The payload is just Base64 text; anyone can read it. The <b>signature</b> only proves nobody <em>changed</em> it. Never put secrets inside. And the server must <b>verify</b> the signature, expiry and audience; decoding alone proves nothing.</em></div>
+<table>
+<tr><th></th><th>Server session (module 5)</th><th>JWT</th></tr>
+<tr><td>What the client holds</td><td>Random ID (claim ticket)</td><td>Signed note with your info</td></tr>
+<tr><td>Server stores</td><td>Session table</td><td>Nothing (just verifies signature)</td></tr>
+<tr><td>Log someone out instantly</td><td>Easy: delete the session</td><td>Hard: valid until it expires</td></tr>
+</table>
+
+<h3>Passwords, done properly</h3>
+<pre class="fig">  signup:  "hunter2" + random SALT "x9Qa..."  ──► [ Argon2 / bcrypt ] ──► $argon2id$...  (stored)
+  login:   typed password + stored salt       ──► [ same hash ]        ──► compare with stored
+  Plain password is NEVER stored. Salt makes identical passwords hash differently.</pre>
+<ul>
+<li>Hashing is one-way: you can't "decrypt" it.</li>
+<li><b>Slow on purpose</b> (bcrypt/Argon2) so attackers can't test billions of guesses per second.</li>
+<li>Rate-limit login attempts; don't say which half (email or password) was wrong.</li>
+</ul>
+
+<h3>MFA and passkeys</h3>
+<ul>
+<li><b>MFA</b> = two or more of: something you <b>know</b> (password), <b>have</b> (phone/security key), <b>are</b> (fingerprint). Stolen password alone is no longer enough.</li>
+<li><b>TOTP</b> authenticator apps &gt; SMS (SIM-swapping risk).</li>
+<li><b>Passkeys (WebAuthn)</b>: your device holds a private key; the site stores only the public key. Nothing to phish, because the key only works for the real domain. This is where logins are heading.</li>
+</ul>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Why does the app exchange a "code" for a token instead of Google sending the token directly?</summary><p>The code travels through the browser URL (visible to many things). The real token is fetched server-to-server, where only the app (with its secret) can get it.</p></details>
+<details class="dumb"><summary>Q: Is OAuth for login?</summary><p>On its own, no: it's for delegated access. Login is OIDC built on top of it.</p></details>
+<details class="dumb"><summary>Q: Where should I store a JWT in a browser?</summary><p>An <code>HttpOnly; Secure; SameSite</code> cookie is generally safer than <code>localStorage</code>, which any XSS-injected script can read.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: what's wrong?</summary>
+<p>A developer stores passwords as <code>sha256(password)</code> with no salt. List two problems.<br><b>Answer:</b> (1) SHA-256 is extremely fast, so attackers can test billions of guesses/second; use Argon2/bcrypt. (2) No salt: identical passwords share identical hashes, and precomputed "rainbow tables" crack them instantly.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>OAuth 2 = delegated, scoped, revocable access without sharing passwords. OIDC adds identity.</li>
+<li>JWT = signed (not encrypted) token; always verify signature, expiry, issuer, audience.</li>
+<li>Store passwords as slow salted hashes (Argon2id/bcrypt).</li>
+<li>Use MFA; passkeys are phishing-resistant.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b><b>OAuth 2</b> lets an app get <em>limited access</em> to your data at another service without ever seeing your password. <b>OpenID Connect (OIDC)</b> adds a standard way to learn <em>who you are</em>.</div>
+
+<h3>OAuth 2 roles and flow (Authorization Code)</h3>
+<ul><li><b>Resource owner</b>: the user. <b>Client</b>: the app wanting access. <b>Authorization server</b>: issues tokens (Google, Okta). <b>Resource server</b>: the API holding data.</li></ul>
+<ol>
+<li>App redirects user to the provider with <code>client_id</code>, requested <b>scopes</b> (e.g. <code>email calendar.read</code>), <code>redirect_uri</code>, a random <code>state</code>.</li>
+<li>User logs in <em>at the provider</em> and approves the scopes.</li>
+<li>Provider redirects back with a short-lived <b>authorization code</b>.</li>
+<li>App's <em>server</em> exchanges code + client secret for an <b>access token</b> (and <b>refresh token</b>). (Public clients add <b>PKCE</b>.)</li>
+<li>App calls the API with <code>Authorization: Bearer &lt;access_token&gt;</code>.</li>
+</ol>
+<ul>
+<li><b>Access token</b>: short-lived (minutes), grants access. <b>Refresh token</b>: long-lived, gets new access tokens; guard carefully.</li>
+<li><b>OIDC</b> adds an <b>ID token</b> (a JWT with the user's identity: <code>sub</code>, <code>email</code>) = "Sign in with Google".</li>
+<li>The <code>state</code> parameter prevents CSRF on the callback.</li>
+</ul>
+
+<h3>JWT: JSON Web Token</h3>
+<pre><code>eyJhbGciOiJIUzI1NiJ9 . eyJzdWIiOiI0MiIsImV4cCI6MTcwMDAwMDAwMH0 . SflKxwRJSMeKKF2QT4fw...
+     header                       payload (claims)                      signature</code></pre>
+<ul>
+<li>Header and payload are just <b>Base64-encoded JSON</b>, <b>readable by anyone</b>. The <b>signature</b> proves they weren't altered (needs the secret/private key).</li>
+<li>Claims: <code>sub</code> (subject), <code>iss</code> (issuer), <code>aud</code> (audience), <code>exp</code> (expiry).</li>
+<li>Server <b>must verify</b> signature, <code>exp</code>, <code>iss</code>, <code>aud</code>, and a fixed allowed algorithm (reject <code>alg: none</code>).</li>
+<li>Don't put secrets in a JWT. Hard to revoke before expiry, so keep short lifetimes.</li>
+<li>Storing in <code>localStorage</code> exposes it to XSS; an <code>HttpOnly</code> cookie is often safer for browsers.</li>
+</ul>
+
+<h3>Passwords done right</h3>
+<ul>
+<li>Store <code>hash(password + unique salt)</code> using a <b>slow, memory-hard</b> algorithm: <b>Argon2id</b>, scrypt or bcrypt. Not MD5/SHA-1/plain SHA-256.</li>
+<li><b>Salt</b>: random per-user value; defeats rainbow tables and shows identical passwords as different hashes. Optional <b>pepper</b>: secret key stored outside the DB.</li>
+<li>Compare with constant-time functions; rate-limit logins; avoid revealing whether the email exists.</li>
+<li>Prefer length over complexity rules; check against breached-password lists.</li>
+</ul>
+
+<h3>MFA and passwordless</h3>
+<ul>
+<li><b>TOTP</b> apps (6-digit codes changing every 30 s), <b>push approvals</b>, <b>SMS</b> (weakest: SIM swap), <b>hardware keys</b>.</li>
+<li><b>Passkeys / WebAuthn</b>: public-key crypto; device keeps a private key, server stores only the public key. Phishing-resistant because the key is bound to the real domain.</li>
+<li>Always offer <b>recovery</b> carefully; it's often the weakest link.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="16-proxies-caching.html">← Proxies & Caching</a><a href="18-databases.html">Next: Databases →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"OAuth 2 is primarily for:",options:["Delegated, limited access to resources without sharing passwords","Encrypting disks","DNS lookups","Compiling code"],answer:0,why:"Authorization delegation."},
+{q:"What does OpenID Connect add on top of OAuth 2?",options:["Faster tokens","Identity (who the user is) via an ID token","Encryption","Caching"],answer:1,why:"OAuth alone isn't an authentication protocol; OIDC is."},
+{q:"What is a scope?",options:["A network range","The specific permissions the app requests","A cookie flag","A DNS record"],answer:1,why:"e.g. read email only."},
+{q:"A JWT's payload is:",options:["Encrypted and unreadable","Base64-encoded and readable by anyone; the signature prevents tampering","Always secret","A password hash"],answer:1,why:"Don't put secrets in it."},
+{q:"Which is NOT a good way to store passwords?",options:["Argon2id with a salt","bcrypt","Unsalted SHA-256","scrypt"],answer:2,why:"Fast unsalted hashes are quick to brute-force."},
+{q:"Why use a per-user salt?",options:["Makes hashes shorter","Identical passwords get different hashes and precomputed tables fail","Encrypts the DB","Speeds login"],answer:1,why:"Forces attackers to attack each hash separately."},
+{q:"Which MFA method is generally phishing-resistant?",options:["SMS codes","Passkeys / hardware keys (WebAuthn)","Security questions","Email links"],answer:1,why:"The credential is bound to the real site's domain."},
+{q:"Why are access tokens short-lived?",options:["To save storage","Limits damage if stolen, since they're hard to revoke","They're deleted by browsers","Required by JSON"],answer:1,why:"Use refresh tokens to renew."},
+{q:"What must a server do when it receives a JWT?",options:["Trust it","Verify signature, expiry, issuer and audience","Decode only","Ignore the signature"],answer:1,why:"Decoding is not verifying."}
+];
+window.THINK=[
+{q:"Explain 'Login with Google' to a non-technical friend in three sentences.",a:"Your app sends you to Google to prove who you are. Google tells the app 'this is Ana, verified' without ever sharing your Google password. The app then creates its own session for you."},
+{q:"Sessions vs JWT: when would you choose each?",a:"Classic web app, need easy logout/revocation → server-side sessions. Many services/APIs verifying tokens without central lookup → short-lived JWTs plus refresh tokens."}
+];
+</script><script src="quiz.js"></script></body></html>

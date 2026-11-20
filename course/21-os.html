@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>21. Operating System Concepts</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="21"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>21. Operating System Concepts: Memory, Filesystems, Sockets</h1>
+<p class="lead">The layer between your code and the hardware. Module 1 revisited.</p>
+<section class="hf">
+<h2>🏛️ Start here: the building manager</h2>
+<div class="story"><b class="t">A story</b>
+Picture an apartment building. Dozens of tenants (<b>processes</b>) live inside. They don't connect their own plumbing or wiring: the <b>building manager</b> (the <b>operating system kernel</b>) does:<br>
+🛋️ assigns each tenant their own private flat (<b>memory</b>),<br>
+🗄️ runs the shared storage room (<b>file system</b>),<br>
+📬 handles the mailroom (<b>network</b>),<br>
+⏱️ schedules who uses the shared lift and when (<b>CPU time</b>).<br><br>
+Tenants must <b>ask politely</b> via the front desk (<b>system calls</b>): "please open this file," "please send this data." They can't just walk into the machine room.</div>
+
+<pre class="fig">  ┌───────────────── USER SPACE (restricted) ─────────────────┐
+  │  Your app    Browser    Database    Shell    ...          │
+  └──────────────────┬─────────────────────────────────────────┘
+        system calls │ open() read() write() socket() fork()
+  ┌──────────────────▼─────────────────────────────────────────┐
+  │  KERNEL (privileged): scheduler · memory manager ·         │
+  │                       file systems · network stack         │
+  └──────────────────┬─────────────────────────────────────────┘
+                     ▼
+              HARDWARE: CPU · RAM · disk · network card</pre>
+<p>Try: <code>strace ls</code> on Linux (or <code>dtruss ls</code> on macOS, as admin) to <em>watch</em> a simple command make dozens of system calls.</p>
+
+<h3>Memory: private flats and the overflow storage</h3>
+<ul>
+<li><b>RAM</b>: fast, small, forgets on power-off. <b>Disk</b>: slower, big, remembers.</li>
+<li><b>Virtual memory</b>: every process <em>believes</em> it has the whole memory to itself. The OS secretly maps its addresses to real RAM, so processes can't peek at each other (isolation, module 1).</li>
+<li><b>Swap</b>: when RAM fills, the OS parks rarely-used chunks on disk. Works, but everything slows to a crawl ("thrashing").</li>
+</ul>
+<pre class="fig">  Process's view                       Reality
+  ┌─────────────┐ ← "my memory"         RAM: [A][B][A][C][B][free]
+  │ stack ↓     │                       disk (swap): [A-old-stuff]
+  │   ...       │
+  │ heap  ↑     │
+  │ code        │</pre>
+<ul>
+<li><b>Stack</b>: function calls and local variables; neat, automatic, small. Infinite recursion → "stack overflow".</li>
+<li><b>Heap</b>: for data that outlives a function; bigger, managed. Forget to free it → <b>memory leak</b> (the process grows until the OS kills it).</li>
+</ul>
+
+<h3>Latency: how slow is "slow"? (scale it to human time)</h3>
+<table>
+<tr><th>Operation</th><th>Real time</th><th>If a CPU step = 1 second</th></tr>
+<tr><td>CPU cache</td><td>~1 ns</td><td>a few seconds</td></tr>
+<tr><td>RAM</td><td>~100 ns</td><td>~2 minutes</td></tr>
+<tr><td>SSD read</td><td>~100 µs</td><td>~1 day</td></tr>
+<tr><td>Network, same datacenter</td><td>~0.5 ms</td><td>~6 days</td></tr>
+<tr><td>Network, across an ocean</td><td>~100 ms</td><td>~3 years</td></tr>
+</table>
+<p>This is why caching and avoiding unnecessary round trips matter so much.</p>
+
+<h3>File systems: everything is a file</h3>
+<ul>
+<li>A tree of directories and files; the OS turns names into locations on disk.</li>
+<li>Opening anything (file, pipe, <b>network connection</b>) hands you a small integer, a <b>file descriptor</b>. There's a limit per process: "too many open files" means you forgot to close some.</li>
+<li>Disks fill up, and a full disk crashes servers in funny ways (logs, temp files). Monitor it!</li>
+</ul>
+
+<h3>Your web server, revealed as system calls</h3>
+<pre class="fig">  socket()   ← "give me a network endpoint"
+  bind(8000) ← "attach it to port 8000"           (error: "address already in use" = taken!)
+  listen()   ← "start waiting for visitors"
+  ┌ accept() ← "a visitor connected; here's a new connection"
+  │ read()   ← get the HTTP request bytes
+  │ write()  ← send the HTTP response bytes
+  └ close()  ← hang up, loop back to accept()</pre>
+<p>Find who's using a port: <code>lsof -i :8000</code>.</p>
+
+<h3>Signals: polite taps on the shoulder</h3>
+<table>
+<tr><th>Signal</th><th>Meaning</th></tr>
+<tr><td><code>SIGINT</code></td><td>Ctrl+C: "please interrupt"</td></tr>
+<tr><td><code>SIGTERM</code></td><td>"Please shut down" (<code>kill PID</code> default). Can clean up first.</td></tr>
+<tr><td><code>SIGKILL</code></td><td><code>kill -9</code>: "die now", no cleanup, can't be caught. Last resort.</td></tr>
+</table>
+
+<div class="brain"><b class="t">Brain power</b>Your server slowly eats memory and gets killed at 3 a.m. every night. Two hypotheses? <em>A memory leak (growing cache/list never emptied) or a big nightly job loading too much data. Watch memory over time and take a heap snapshot.</em></div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Is Linux "the OS" or "the kernel"?</summary><p>Technically Linux is the kernel; "distributions" (Ubuntu, Debian…) bundle it with tools. Most servers and Android run it; macOS and Windows have their own kernels.</p></details>
+<details class="dumb"><summary>Q: What's a daemon / service?</summary><p>A process meant to run in the background for a long time (web server, database), started and restarted by systemd/launchd.</p></details>
+<details class="dumb"><summary>Q: What's the OOM killer?</summary><p>When the system truly runs out of memory, the kernel picks a hungry process and kills it to save the rest.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: match the symptom</summary>
+<p>(1) "Address already in use". (2) Server freezes, disk light blinking nonstop, RAM full. (3) "Too many open files". (4) Process memory climbs forever.<br><b>Answer:</b> (1) another process owns the port; (2) swapping/thrashing; (3) file descriptors leaked or limit too low; (4) memory leak.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>The kernel manages CPU, memory, files and network; programs use <b>system calls</b>.</li>
+<li>Virtual memory isolates processes; swap saves you but is slow; leaks kill long-running programs.</li>
+<li>RAM is ~1000× faster than SSD and ~1,000,000× faster than a trans-ocean network call.</li>
+<li>Everything is a file descriptor; sockets power servers; signals control processes.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>The OS <b>kernel</b> manages shared hardware (CPU, memory, disk, network) and offers programs a safe, simple interface through <b>system calls</b>. Programs never touch hardware directly.</div>
+
+<h3>Kernel space, user space, system calls</h3>
+<ul>
+<li><b>User space</b>: your program, restricted. <b>Kernel space</b>: privileged OS code.</li>
+<li>To open a file, send network data, or start a process, your program makes a <b>system call</b> (<code>open</code>, <code>read</code>, <code>write</code>, <code>socket</code>, <code>fork</code>). Language libraries wrap these.</li>
+<li>Peek: <code>strace ls</code> (Linux) or <code>dtruss</code> (macOS) shows them.</li>
+</ul>
+
+<h3>Memory</h3>
+<ul>
+<li><b>RAM</b> is fast, temporary, limited. Disk is slow, persistent. (Rough latency: CPU cache ns, RAM ~100 ns, SSD ~100 µs, network across continents ~100 ms.)</li>
+<li><b>Virtual memory</b>: each process sees its own private address space; the OS maps it to real RAM in <b>pages</b>. This is how isolation works.</li>
+<li><b>Swap</b>: when RAM is full the OS moves pages to disk, making everything very slow ("thrashing").</li>
+<li><b>Stack</b> (function calls, local variables; overflow with endless recursion) vs <b>heap</b> (dynamic allocation).</li>
+<li><b>Memory leak</b>: memory kept but never freed → process grows until the OS kills it (<b>OOM killer</b>). Languages with <b>garbage collection</b> free unreachable objects automatically; C/C++ need manual care.</li>
+</ul>
+
+<h3>Filesystems</h3>
+<ul>
+<li>Organises bytes into files and directories (tree). Types: ext4, NTFS, APFS.</li>
+<li>Everything is a <b>file descriptor</b> (an integer handle): files, pipes, and <b>network sockets</b> (Unix: "everything is a file").</li>
+<li>Limits: open file descriptors per process ("too many open files"), disk space, <b>inodes</b>.</li>
+<li><b>Permissions</b> and ownership (module 6). Writes are buffered; <code>fsync</code> forces them to disk.</li>
+<li><b>Symlinks</b> point to other paths. Temp files, logs and disks can fill up and crash servers.</li>
+</ul>
+
+<h3>Sockets and the network</h3>
+<p>Your HTTP server (module 4) does roughly: <code>socket()</code> → <code>bind(port)</code> → <code>listen()</code> → loop <code>accept()</code> → <code>read()</code> request → <code>write()</code> response → <code>close()</code>. "Address already in use" means another process holds that port (<code>lsof -i :8000</code>).</p>
+
+<h3>Processes and signals</h3>
+<ul>
+<li><code>fork</code>/<code>exec</code>: how a shell starts programs. <b>Signals</b> notify processes: <code>SIGINT</code> (Ctrl+C), <code>SIGTERM</code> (polite stop, allows cleanup), <code>SIGKILL</code> (immediate, can't be caught).</li>
+<li><b>Daemons/services</b> run in the background; managed by systemd/launchd. A <b>zombie</b> is a finished child its parent hasn't collected.</li>
+<li>Scheduling: <b>context switch</b> swaps which process runs; cost adds up with too many threads.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="20-testing.html">← Testing</a><a href="22-concurrency.html">Next: Concurrency & Async →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"How does a user program read a file?",options:["Directly from the disk hardware","Via a system call to the kernel","By the browser","Through DNS"],answer:1,why:"User programs never access hardware directly."},
+{q:"Virtual memory gives each process:",options:["Shared memory with everyone","Its own private address space mapped by the OS","No memory","Disk space only"],answer:1,why:"Isolation and flexibility."},
+{q:"A server slows to a crawl as RAM fills and the disk activity spikes. Likely:",options:["Swapping/thrashing","DNS problem","Bad TLS","Cookie issue"],answer:0,why:"Pages are being moved between RAM and disk."},
+{q:"A memory leak is:",options:["Memory kept but never released, growing over time","A security hole only","Running out of disk","A cache hit"],answer:0,why:"Eventually the process is killed or the machine swaps."},
+{q:"'Address already in use' when starting a server means:",options:["Wrong DNS","Another process is already listening on that port","Out of disk","Bad certificate"],answer:1,why:"Only one process can bind a port; find it with lsof."},
+{q:"SIGTERM vs SIGKILL?",options:["Same","TERM asks politely (can clean up); KILL ends immediately","KILL is gentle","TERM is for threads"],answer:1,why:"Prefer SIGTERM so apps can shut down cleanly."},
+{q:"A file descriptor is:",options:["A file's description text","An integer handle the OS gives for an open file/socket/pipe","A folder","A permission"],answer:1,why:"Sockets use them too."},
+{q:"Which is fastest to access?",options:["Network","SSD","RAM","HDD"],answer:2,why:"RAM is orders of magnitude faster than disk or network."}
+];
+window.THINK=[
+{q:"Your Node server crashes every night at 3 a.m. with 'out of memory'. Hypotheses and steps?",a:"Memory leak (growing caches, listeners, global arrays) or scheduled job loading too much. Monitor memory over time, take heap snapshots, check logs and limits."},
+{q:"Why does 'too many open files' happen on a busy server?",a:"Each connection and file uses a file descriptor; per-process limit reached (ulimit). Raise the limit and fix leaks of unclosed connections."}
+];
+</script><script src="quiz.js"></script></body></html>

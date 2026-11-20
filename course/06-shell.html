@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>6. Command Line and Shell</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="06"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>6. Command Line and Shell</h1>
+<p class="lead">Talking to the computer with text. Faster, scriptable, and how servers are run.</p>
+<section class="hf">
+<h2>⌨️ Start here: texting with your computer</h2>
+<div class="story"><b class="t">A story</b>
+Clicking through folders is like pointing at things in a shop: fine for one item. But imagine telling an assistant: <em>"Rename all 500 photos in this folder so they start with the date."</em> Pointing 500 times is painful; a single sentence is easy.<br><br>
+The <b>command line</b> is that sentence. You type short commands; the computer answers in text. The program that listens to you is the <b>shell</b>.</div>
+
+<h3>Your map: where am I?</h3>
+<p>Folders form a tree. The shell is always "standing" in one folder, the <b>current directory</b>.</p>
+<pre class="fig">  /                       ← root (top of everything)
+  └── Users
+      └── ana                 ← your home, shortcut: ~
+          ├── Documents
+          │   └── notes.txt
+          └── projects
+              └── blog        ← YOU ARE HERE (pwd prints this)</pre>
+<pre><code>$ pwd                 # Print Working Directory: where am I?
+/Users/ana/projects/blog
+$ ls                  # LiSt what's here
+index.html  style.css
+$ cd ..               # go UP one folder  (.. means "parent")
+$ cd Documents        # go DOWN into Documents
+$ cd ~                # teleport home</code></pre>
+
+<h3>Pipes: the LEGO of the command line</h3>
+<p>Every command is small and does <em>one thing</em>. A <b>pipe</b> <code>|</code> hands the output of one to the next, like a factory conveyor belt.</p>
+<pre class="fig">  cat visitors.txt  │  sort  │  uniq -c  │  sort -nr  │  head -3
+  (read the file)   → (alphabetise) → (count dupes) → (biggest first) → (top 3)</pre>
+<pre><code>$ cat visitors.txt | sort | uniq -c | sort -nr | head -3
+     41 /home
+     17 /pricing
+      9 /about</code></pre>
+<p>You just built a "top 3 most visited pages" tool from 5 tiny commands, in one line. That's the superpower.</p>
+
+<div class="brain"><b class="t">Brain power</b>How would you count how many <code>.jpg</code> files are in a folder? <em>Try: <code>ls | grep ".jpg" | wc -l</code>: list, keep only jpg lines, count lines.</em></div>
+
+<h3>Redirect: send output somewhere else</h3>
+<pre><code>$ ls &gt; files.txt          # save the listing INTO a file (overwrites)
+$ echo "done" &gt;&gt; log.txt  # APPEND to a file
+$ python app.py 2&gt; errors.txt   # send only error messages to a file</code></pre>
+<p>Remember module 1: every process has three channels: <code>stdin</code> (in), <code>stdout</code> (normal out), <code>stderr</code> (errors out). Pipes and redirects just reconnect them.</p>
+
+<h3>Permissions: who can touch this?</h3>
+<p>Each file has three sets of <b>r</b>ead / <b>w</b>rite / e<b>x</b>ecute rights: for the <b>owner</b>, the <b>group</b>, and <b>everyone else</b>.</p>
+<pre class="fig">  -rwxr-xr--  ana staff  run.sh
+   │└┬┘└┬┘└┬┘
+   │ │  │  └─ everyone else: read only
+   │ │  └──── group: read + execute
+   │ └─────── owner (ana): read + write + execute
+   └───────── "-" = file ("d" = directory)</pre>
+<p>"Permission denied"? Check this. Script won't run? <code>chmod +x run.sh</code> adds the execute right.</p>
+
+<div class="fixit"><b>Danger zone:</b> <code>rm</code> deletes <em>forever</em> (no trash can). <code>rm -rf</code> deletes a whole folder tree without asking. <code>sudo</code> means "do this as the all-powerful admin." Always re-read a command, especially one you pasted.</div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Terminal, shell, console, bash, zsh: what's what?</summary><p>Terminal = the window. Shell = the program inside that understands commands (bash, zsh, PowerShell are shells). They're often used interchangeably.</p></details>
+<details class="dumb"><summary>Q: I typed a command and got "command not found".</summary><p>Either a typo, or the program isn't in a folder listed in your <code>PATH</code> (the list of places the shell searches). To run a file in the current folder use <code>./myscript</code>.</p></details>
+<details class="dumb"><summary>Q: How do I stop a running command?</summary><p><b>Ctrl+C</b>. Also: <b>Tab</b> auto-completes names and <b>↑</b> recalls old commands. Use them constantly.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: build the commands</summary>
+<p>1) Show how many lines are in <code>notes.txt</code>. 2) Find lines containing "ERROR" in <code>app.log</code> and save them in <code>errors.txt</code>.<br><b>Answer:</b> 1) <code>cat notes.txt | wc -l</code> (or <code>wc -l notes.txt</code>). 2) <code>grep ERROR app.log &gt; errors.txt</code>.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>The shell runs commands; small tools + <b>pipes</b> (<code>|</code>) combine into powerful one-liners.</li>
+<li><code>pwd</code>, <code>ls</code>, <code>cd</code> to move around; <code>..</code> is the parent; <code>~</code> is home.</li>
+<li><code>&gt;</code> overwrites a file, <code>&gt;&gt;</code> appends. Three channels: stdin, stdout, stderr.</li>
+<li>Permissions are rwx for owner / group / others. <code>chmod +x</code> makes a script runnable.</li>
+<li>Be careful with <code>rm -rf</code> and <code>sudo</code>.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A <b>terminal</b> is the window; the <b>shell</b> (bash, zsh, PowerShell) is the program inside it that reads your commands and starts <b>processes</b> to run them.</div>
+
+<h3>Navigation and files</h3>
+<pre><code>pwd                 # where am I?
+ls -la              # list files (incl. hidden) with details
+cd projects         # change directory;  cd ..  up one;  cd ~  home
+mkdir demo          # make a folder
+touch a.txt         # create empty file
+cp a.txt b.txt      # copy        mv a.txt c.txt   # move/rename
+rm b.txt            # delete (NO recycle bin!)   rm -r dir  # recursive
+cat file            # print file   less file  # page through it
+man ls  /  ls --help   # documentation</code></pre>
+<p><b>Paths</b>: absolute starts with <code>/</code> (<code>/Users/ana/a.txt</code>); relative is from the current directory (<code>../a.txt</code>). <code>.</code> = here, <code>..</code> = parent.</p>
+
+<h3>Pipes and redirection</h3>
+<p>Small tools that do one thing, chained together. Every process has <code>stdin</code>, <code>stdout</code>, <code>stderr</code> (module 1).</p>
+<pre><code>ls | wc -l                  # pipe: stdout of one → stdin of next
+echo hi &gt; out.txt           # redirect stdout to file (overwrite)
+echo more &gt;&gt; out.txt       # append
+cmd 2&gt; errors.log           # redirect stderr
+grep -r "TODO" src/ | head  # search text in files
+find . -name "*.py"         # find files
+cat log.txt | sort | uniq -c | sort -nr   # count duplicates</code></pre>
+
+<h3>Environment variables and PATH</h3>
+<ul>
+<li>Named values passed to processes: <code>export API_KEY=abc</code>, read with <code>$API_KEY</code>.</li>
+<li><code>PATH</code> is a list of directories the shell searches when you type a command name. "command not found" often means it's not on PATH.</li>
+</ul>
+
+<h3>Permissions</h3>
+<pre><code>-rwxr-xr--  1 ana staff  120 Jan 1  run.sh
+ │└┬┘└┬┘└┬┘
+ │ │  │  └ others: r--
+ │ │  └ group:  r-x
+ │ └ owner:  rwx
+ └ type (- file, d directory)
+chmod +x run.sh     # make executable
+sudo cmd            # run as administrator (use carefully)</code></pre>
+
+<h3>Handy habits</h3>
+<ul><li><b>Tab</b> completes, <b>↑</b> recalls history, <b>Ctrl+C</b> stops the running process, <b>Ctrl+R</b> searches history.</li>
+<li><code>&amp;&amp;</code> runs the next command only if the first succeeded; exit code is in <code>$?</code>.</li>
+<li>A <b>shell script</b> is a file of commands: starts with <code>#!/bin/bash</code>.</li></ul>
+<div class="box">Caution: <code>rm -rf</code> and <code>sudo</code> don't ask twice. Read a command before pressing Enter, especially if you pasted it.</div>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="05-auth.html">← Auth</a><a href="07-git.html">Next: Git →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What is the relationship between terminal and shell?",options:["They are the same thing","Terminal is the window; shell is the program interpreting commands","Shell is the window; terminal is the OS","Terminal compiles shell"],answer:1,why:"The terminal displays; the shell (bash/zsh) interprets your commands."},
+{q:"What does `ls | wc -l` do?",options:["Writes ls to a file","Counts lines of ls output, i.e. number of entries","Lists only long names","Deletes files"],answer:1,why:"The pipe feeds ls's stdout into wc's stdin; -l counts lines."},
+{q:"Difference between > and >> ?",options:["None","> overwrites, >> appends","> appends, >> overwrites","> is for stderr"],answer:1,why:"Single arrow truncates the file; double appends."},
+{q:"`../data/a.txt` is:",options:["An absolute path","A relative path going up one folder first","A URL","A hidden file"],answer:1,why:".. means parent directory; no leading / so it's relative."},
+{q:"You type `mytool` and get 'command not found' though the file exists. Likely cause?",options:["Disk full","Its directory isn't on PATH (or it isn't executable)","DNS","Wrong IP"],answer:1,why:"The shell only looks in PATH directories; otherwise use ./mytool."},
+{q:"In `-rwxr-xr--`, what can 'others' do?",options:["Read only","Read and execute","Everything","Nothing"],answer:0,why:"The last triplet r-- = read only."},
+{q:"Which key combo stops a running foreground command?",options:["Ctrl+C","Ctrl+S","Tab","Esc"],answer:0,why:"Ctrl+C sends an interrupt signal to the process."},
+{q:"Why is `rm -rf` dangerous?",options:["It's slow","It deletes recursively with no confirmation and no recycle bin","It needs a network","It encrypts files"],answer:1,why:"Deleted files are gone; a typo in the path can remove far more than intended."}
+];
+window.THINK=[
+{q:"Find how many lines in a log contain the word ERROR, using pipes.",a:"<code>grep ERROR app.log | wc -l</code> (or <code>grep -c ERROR app.log</code>)."},
+{q:"Why do developers prefer shell commands over clicking for repeated tasks?",a:"Commands can be saved in scripts, repeated exactly, run over SSH on servers with no GUI, and automated in CI."}
+];
+</script><script src="quiz.js"></script></body></html>

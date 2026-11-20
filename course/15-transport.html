@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>15. TCP, UDP, TLS, WebSockets, HTTP/2 and 3</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="15"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>15. TCP vs UDP, TLS in Detail, WebSockets, HTTP/2 and HTTP/3</h1>
+<p class="lead">Going one layer deeper into how bytes actually travel.</p>
+<section class="hf">
+<h2>📞 Start here: letters vs phone calls vs walkie-talkies</h2>
+<div class="story"><b class="t">A story</b>
+Three ways to talk:<br>
+📦 <b>Registered mail (TCP)</b>: every letter is numbered and signed for. Lost one? It's re-sent. Arrives in order. Slower, but reliable.<br>
+📮 <b>Throwing postcards in a mailbox (UDP)</b>: no tracking, no resend. Fast and cheap. A few may be lost.<br>
+📻 <b>An open phone line (WebSocket)</b>: both sides can talk any time, no re-dialling.<br><br>
+Choosing the right one is the whole story of this chapter.</div>
+
+<h3>TCP: the careful courier</h3>
+<p>Before sending anything, TCP does a <b>three-way handshake</b>, a polite "hello":</p>
+<pre class="fig">  Client                    Server
+    │ ── SYN  ("can we talk?") ──►│
+    │ ◄─ SYN-ACK ("yes, can you hear me?") ─│
+    │ ── ACK  ("loud and clear") ─►│
+    │ ═══════ data flows ═════════ │  every chunk numbered; missing ones re-sent</pre>
+<ul>
+<li>Guarantees <b>order and delivery</b>. Used for web pages, email, file transfer, databases.</li>
+<li>Cost: the handshake, plus waiting for lost pieces (a delay called <em>head-of-line blocking</em>).</li>
+</ul>
+
+<h3>UDP: the "just send it" postcard</h3>
+<p>No handshake, no numbering, no resending. Use it when <b>late is worse than lost</b>:</p>
+<ul>
+<li>Video call: if a frame from 2 seconds ago arrives now, it's worthless. Skip it.</li>
+<li>Online games: your position <em>now</em> matters, not 3 updates ago.</li>
+<li>DNS: tiny question, tiny answer. If it fails, just ask again.</li>
+</ul>
+
+<table>
+<tr><th></th><th>TCP</th><th>UDP</th></tr>
+<tr><td>Analogy</td><td>Registered mail</td><td>Postcards</td></tr>
+<tr><td>Reliable &amp; ordered</td><td>✅</td><td>❌</td></tr>
+<tr><td>Speed/overhead</td><td>Slower</td><td>Fast</td></tr>
+<tr><td>Typical use</td><td>Web, email, SSH</td><td>Calls, games, DNS, HTTP/3 (via QUIC)</td></tr>
+</table>
+
+<h3>TLS handshake, in plain words</h3>
+<div class="convo">
+<p class="a"><b>Browser</b>Hi example.com! I speak TLS 1.3 and these ciphers.</p>
+<p class="b"><b>Server</b>Let's use this one. Here's my certificate, my ID card, signed by a Certificate Authority.</p>
+<p class="a"><b>Browser</b>Checking... name matches ✔, not expired ✔, signed by someone I trust ✔. Here's my half of a secret.</p>
+<p class="b"><b>Server</b>And here's mine. We can both now compute the same key without anyone listening in being able to.</p>
+<p class="a"><b>Both</b>🔒 Everything from here on is encrypted.</p>
+</div>
+<p>The clever bit is that both sides end up with the <b>same secret key</b> without ever sending it. The key is thrown away afterwards (<b>forward secrecy</b>), so even if the server's private key is stolen next year, today's conversation stays unreadable.</p>
+
+<h3>HTTP, three generations</h3>
+<pre class="fig">  HTTP/1.1   one request at a time per connection  (browsers open ~6 connections)
+              [req1]───[resp1]  [req2]───[resp2]  ...  (a slow one blocks the line)
+
+  HTTP/2     MANY requests share ONE connection (multiplexing)
+              [req1][req2][req3] interleaved   …but one lost TCP packet stalls ALL
+
+  HTTP/3     same idea over QUIC (built on UDP):
+              loss on one stream doesn't block others; faster setup; survives Wi-Fi → 4G switch</pre>
+<p>Good news: your code (<code>GET</code>, <code>200 OK</code>, headers) looks the same in all three. The upgrade happens underneath.</p>
+
+<h3>"The server wants to tell me something!" (real-time)</h3>
+<p>Plain HTTP: the client always asks first. For chat or live scores you need the server to push:</p>
+<table>
+<tr><th>Option</th><th>How</th><th>Pick when</th></tr>
+<tr><td>Polling</td><td>"Anything new?" every few seconds</td><td>Simple, low-frequency</td></tr>
+<tr><td>Server-Sent Events</td><td>Server streams updates one-way over HTTP</td><td>Notifications, live feeds</td></tr>
+<tr><td>WebSocket</td><td>One HTTP request upgrades to a two-way channel (status 101)</td><td>Chat, collaborative editing, games</td></tr>
+</table>
+<pre><code>const ws = new WebSocket("wss://chat.example.com/room1");
+ws.onmessage = (e) =&gt; console.log("New message:", e.data);
+ws.onopen    = () =&gt; ws.send("Hello everyone!");</code></pre>
+
+<div class="brain"><b class="t">Brain power</b>A stock ticker pushes prices to your browser 10 times a second. WebSocket, SSE, or polling? <em>SSE or WebSocket; polling 10×/second wastes huge effort. SSE is simpler because the data only flows server → client.</em></div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: What exactly is a "socket"?</summary><p>The OS's "phone jack" for network talk: an endpoint identified by IP + port + protocol that your program reads from and writes to.</p></details>
+<details class="dumb"><summary>Q: Does HTTPS slow things down?</summary><p>A tiny bit at connection start; modern TLS and HTTP/2/3 made it negligible. The security is worth it.</p></details>
+<details class="dumb"><summary>Q: How can a certificate expire and break a site?</summary><p>Certificates have an end date. When it passes, browsers refuse the connection with a scary warning. Automate renewal (Let's Encrypt does this).</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: TCP or UDP?</summary>
+<p>(1) Downloading a PDF. (2) A live voice call. (3) Sending an email. (4) A fast multiplayer shooter's position updates.<br><b>Answer:</b> (1) TCP, (2) UDP, (3) TCP, (4) UDP.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li><b>TCP</b> = reliable and ordered (handshake, retransmit). <b>UDP</b> = fast and best-effort.</li>
+<li><b>TLS</b> verifies the server's certificate and creates a shared secret key; traffic is then encrypted.</li>
+<li>HTTP/2 multiplexes requests; HTTP/3 runs on QUIC/UDP for smoother, faster connections.</li>
+<li>Real-time: polling, SSE (one-way), WebSocket (two-way).</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Choose the transport for the job: <b>TCP</b> when every byte must arrive in order; <b>UDP</b> when speed and low delay beat perfection. Newer HTTP versions mostly reduce the cost of connections and waiting.</div>
+
+<h3>TCP vs UDP</h3>
+<table>
+<tr><th></th><th>TCP</th><th>UDP</th></tr>
+<tr><td>Connection</td><td>Yes: 3-way handshake (SYN, SYN-ACK, ACK)</td><td>None, just send datagrams</td></tr>
+<tr><td>Delivery</td><td>Reliable, ordered, retransmits lost data</td><td>May drop, duplicate or reorder</td></tr>
+<tr><td>Flow/congestion control</td><td>Yes</td><td>No (app's job)</td></tr>
+<tr><td>Overhead</td><td>Higher</td><td>Low</td></tr>
+<tr><td>Used by</td><td>HTTP/1.1, HTTP/2, email, SSH, databases</td><td>DNS lookups, video calls, games, streaming, HTTP/3 (QUIC)</td></tr>
+</table>
+<p>A <b>socket</b> is the OS endpoint (IP + port + protocol) a process uses to send/receive. Your server from module 4 listens on a TCP socket.</p>
+
+<h3>TLS handshake in more detail</h3>
+<ol>
+<li><b>ClientHello</b>: supported TLS versions, cipher suites, random number, the hostname (SNI).</li>
+<li><b>ServerHello</b> + <b>certificate chain</b>: server picks the cipher and presents its cert.</li>
+<li>Client <b>validates</b> chain to a trusted root CA, checks hostname and dates.</li>
+<li>Both sides derive a shared <b>session key</b> using key exchange (ephemeral Diffie-Hellman, which gives <b>forward secrecy</b>: stealing the server key later doesn't decrypt past traffic).</li>
+<li>Encrypted application data flows using fast <b>symmetric</b> encryption (e.g. AES-GCM).</li>
+</ol>
+<p>TLS 1.3 needs 1 round trip (0-RTT on resumption). Certificates are issued free by CAs like Let's Encrypt and renewed automatically.</p>
+
+<h3>HTTP versions</h3>
+<table>
+<tr><th>Version</th><th>Key improvement</th></tr>
+<tr><td>HTTP/1.1</td><td>Text; keep-alive connections; one request at a time per connection (head-of-line blocking), so browsers open several connections</td></tr>
+<tr><td>HTTP/2</td><td>Binary framing, <b>multiplexing</b> many requests on one TCP connection, header compression. A lost TCP packet still stalls all streams.</td></tr>
+<tr><td>HTTP/3</td><td>Runs over <b>QUIC</b> (on UDP): per-stream loss recovery, TLS 1.3 built in, faster connection setup, survives network switch (Wi-Fi → mobile)</td></tr>
+</table>
+<p>HTTP semantics (methods, status codes, headers) stay the same across versions.</p>
+
+<h3>WebSockets and other real-time options</h3>
+<ul>
+<li>HTTP is request→response; the server can't speak first. <b>WebSocket</b> upgrades one HTTP connection (<code>Upgrade: websocket</code>, status 101) into a persistent <b>two-way</b> channel. Good for chat, live dashboards, multiplayer.</li>
+<li><b>Server-Sent Events (SSE)</b>: one-way server → client stream over plain HTTP; simpler for notifications.</li>
+<li><b>Long polling</b>: client asks, server holds the request open until there's news.</li>
+<li>Trade-off: persistent connections use server resources and complicate scaling.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="14-browser-security.html">← Browser Security</a><a href="16-proxies-caching.html">Next: Proxies, CDNs, Caching →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Which transport guarantees ordered, reliable delivery?",options:["UDP","TCP","Both","Neither"],answer:1,why:"TCP retransmits and reorders."},
+{q:"A live video call prefers UDP because:",options:["It is encrypted","A late packet is useless; low delay matters more than perfect delivery","It's more reliable","It uses port 80"],answer:1,why:"Retransmitting old audio would only add lag."},
+{q:"What is the TCP three-way handshake?",options:["SYN, SYN-ACK, ACK","GET, POST, PUT","DNS, TLS, HTTP","Ping, pong, done"],answer:0,why:"It establishes a connection before data is sent."},
+{q:"What does forward secrecy provide?",options:["Faster DNS","Past traffic stays secret even if the server's private key is later stolen","No certificates","Smaller packets"],answer:1,why:"Ephemeral session keys are not derivable from the long-term key."},
+{q:"HTTP/2's main improvement over HTTP/1.1:",options:["Plain text","Multiplexing many requests over one connection","Removes TLS","Uses UDP"],answer:1,why:"Avoids opening many connections / head-of-line blocking at the HTTP level."},
+{q:"HTTP/3 runs over:",options:["TCP","QUIC on UDP","FTP","SMTP"],answer:1,why:"QUIC provides reliability and TLS on top of UDP."},
+{q:"You need live two-way chat in the browser. Best fit?",options:["Page reload every second","WebSocket","DNS","Cookie"],answer:1,why:"A persistent bidirectional channel."},
+{q:"Server pushes stock prices to the browser, one direction only, over plain HTTP. A simple option:",options:["Server-Sent Events","SMTP","WebRTC video","FTP"],answer:0,why:"SSE is simple one-way streaming."}
+];
+window.THINK=[
+{q:"Why does DNS usually use UDP?",a:"Queries and answers are tiny; a handshake would double the cost. If an answer is lost, the client just asks again (falls back to TCP for large answers)."},
+{q:"Why does a certificate expiry take a site down even though nothing else changed?",a:"Browsers refuse to trust an expired certificate, so TLS validation fails and users see a security warning. Automate renewal and monitor expiry."}
+];
+</script><script src="quiz.js"></script></body></html>

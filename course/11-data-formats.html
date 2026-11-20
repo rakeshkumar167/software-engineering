@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>11. Files, Encodings and Data Formats</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="11"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>11. Files, Encodings and Data Formats</h1>
+<p class="lead">Everything is bytes. Formats and encodings are agreements on what the bytes mean.</p>
+<section class="hf">
+<h2>🔤 Start here: secret decoder ring</h2>
+<div class="story"><b class="t">A story</b>
+You and a friend agree: "A=1, B=2, C=3..." You send <code>8 9</code>. Your friend decodes: "HI". The message is just numbers; the <b>agreement</b> about what the numbers mean makes it text.<br><br>
+Computers store <em>everything</em>, whether text, photos or songs, as <b>bytes</b> (numbers 0 to 255). A <b>file format</b> or <b>encoding</b> is the agreement about what those numbers mean. If two sides disagree, you get garbage, like using the wrong decoder ring.</div>
+
+<h3>Text is just numbers with a decoder ring</h3>
+<pre class="fig">  The letter  "A"  →  number 65  →  bits 01000001
+  The letter  "a"  →  number 97
+  The emoji   "😀"  →  number 128512 (Unicode code point)
+
+  Encoding = how those numbers become BYTES on disk. UTF-8 is the common one:
+     "A"  → 1 byte     [41]
+     "é"  → 2 bytes    [C3 A9]
+     "😀" → 4 bytes    [F0 9F 98 80]</pre>
+<p><b>Unicode</b> = the giant catalogue giving every character in every language a number. <b>UTF-8</b> = the most popular way to write those numbers into bytes. <b>Always use UTF-8.</b></p>
+
+<div class="fixit"><b>The mojibake mystery:</b> you see <code>cafÃ©</code> instead of <code>café</code>. The bytes were written as UTF-8 but read with a different decoder ring. Fix: make both sides say "UTF-8" explicitly: <code>open("f.txt", encoding="utf-8")</code> and <code>Content-Type: text/html; charset=utf-8</code>.</div>
+
+<h3>Text files vs binary files</h3>
+<table>
+<tr><th>Text file</th><th>Binary file</th></tr>
+<tr><td>Bytes decode into readable characters</td><td>Bytes only make sense to a specific program</td></tr>
+<tr><td>Code, .txt, .json, .csv, .html</td><td>.png, .mp3, .zip, .exe, .pdf</td></tr>
+<tr><td>Open in any editor; git diffs work</td><td>Opening in a text editor shows garbage</td></tr>
+</table>
+
+<h3>Formats for structured data</h3>
+<p>Say you want to send a person's details between programs. You need a shared way to write it down:</p>
+<pre><code>// JSON: the web's favourite
+{ "name": "Ana", "age": 21, "languages": ["en", "hi"], "student": true }
+
+# CSV: simple table, spreadsheet-friendly
+name,age
+Ana,21
+Ben,25
+
+&lt;!-- XML: older, wordier --&gt;
+&lt;person&gt;&lt;name&gt;Ana&lt;/name&gt;&lt;age&gt;21&lt;/age&gt;&lt;/person&gt;
+
+# YAML: human-friendly config
+name: Ana
+age: 21</code></pre>
+<p><b>JSON rules to remember:</b> keys and strings in <b>double quotes</b>; no trailing commas; no comments; values are string, number, boolean, null, array, or object.</p>
+
+<h3>Serialisation: packing for the trip</h3>
+<p>Your program holds objects in memory. To <b>save</b> them or <b>send</b> them over the network, you must flatten them into text/bytes (<b>serialise</b>), and rebuild on the other side (<b>deserialise</b>). Like flat-pack furniture.</p>
+<pre><code>import json
+user = {"name": "Ana", "age": 21}
+text = json.dumps(user)          # object → text: '{"name": "Ana", "age": 21}'
+back = json.loads(text)          # text → object again
+print(back["name"])              # Ana
+
+# Saving to and reading from a file
+with open("user.json", "w", encoding="utf-8") as f:
+    json.dump(user, f)
+with open("user.json", encoding="utf-8") as f:
+    loaded = json.load(f)</code></pre>
+
+<div class="brain"><b class="t">Brain power</b>The string "naïve" has 5 characters. Roughly how many UTF-8 bytes? <em>6: every ASCII letter is 1 byte but "ï" takes 2. Characters ≠ bytes!</em></div>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Does renaming photo.png to photo.txt change it?</summary><p>No. The extension is only a hint to the OS about which program to open. The bytes are the same. Real formats identify themselves with "magic bytes" at the start.</p></details>
+<details class="dumb"><summary>Q: Why JSON and not CSV for APIs?</summary><p>JSON handles nesting (a person with a list of addresses) and types. CSV is flat, like one spreadsheet table.</p></details>
+<details class="dumb"><summary>Q: Is it safe to load any data a stranger sends me?</summary><p>JSON is safe to <em>parse</em>, but always <b>validate</b> it (right fields? right types? sensible size?). Some formats (like Python's <code>pickle</code>) can run code when loaded; never load those from untrusted sources.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: spot the invalid JSON</summary>
+<p>Which are invalid? (a) <code>{'name': 'Ana'}</code> (b) <code>{"name": "Ana",}</code> (c) <code>{"age": 21}</code> (d) <code>{"tags": [1, 2, 3]}</code><br><b>Answer:</b> (a) single quotes are not allowed, (b) trailing comma not allowed. (c) and (d) are valid.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Everything is bytes; formats and encodings give them meaning.</li>
+<li>Use UTF-8 everywhere; mismatched encodings cause garbled text.</li>
+<li>JSON = the common web data format; CSV for flat tables; YAML for config.</li>
+<li>Serialise to save/send, deserialise to rebuild. Always validate incoming data.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>A file is a named sequence of <b>bytes</b>. A <b>format</b> says how to interpret them (JSON, PNG, PDF). Text needs an <b>encoding</b> to map characters to bytes.</div>
+
+<h3>Text vs binary</h3>
+<ul>
+<li><b>Text files</b>: bytes that decode to readable characters (source code, JSON, CSV, HTML). Human-editable, diff-friendly.</li>
+<li><b>Binary files</b>: structured bytes for programs (images, executables, databases, zip). Compact; need the right program to read.</li>
+<li>The extension (<code>.png</code>) is only a hint; formats usually start with identifying "magic bytes".</li>
+</ul>
+
+<h3>Character encodings</h3>
+<ul>
+<li><b>ASCII</b>: 128 characters (English letters, digits, symbols), 1 byte each.</li>
+<li><b>Unicode</b>: a catalogue giving every character in every language (and emoji) a number (<em>code point</em>).</li>
+<li><b>UTF-8</b>: the dominant encoding of Unicode. 1 to 4 bytes per character; ASCII-compatible. Use it by default everywhere.</li>
+<li>Wrong encoding assumed → <b>mojibake</b>: "cafÃ©" instead of "café". Be explicit: <code>open(path, encoding="utf-8")</code>, <code>Content-Type: text/html; charset=utf-8</code>.</li>
+<li>Number of bytes ≠ number of characters: "é" is 2 bytes in UTF-8, "😀" is 4.</li>
+</ul>
+
+<h3>Common data formats</h3>
+<table>
+<tr><th>Format</th><th>Looks like</th><th>Use</th></tr>
+<tr><td>JSON</td><td><code>{"name":"Ana","tags":["a","b"],"age":21}</code></td><td>Web APIs, config. Types: object, array, string, number, boolean, null. No comments, no trailing commas.</td></tr>
+<tr><td>CSV</td><td><code>name,age\nAna,21</code></td><td>Simple tables, spreadsheets. Watch commas/quotes inside fields.</td></tr>
+<tr><td>XML</td><td><code>&lt;user&gt;&lt;name&gt;Ana&lt;/name&gt;&lt;/user&gt;</code></td><td>Older APIs, documents, configs; verbose</td></tr>
+<tr><td>YAML / TOML</td><td><code>name: Ana</code></td><td>Human-friendly configuration; YAML is whitespace-sensitive</td></tr>
+<tr><td>HTML</td><td><code>&lt;p&gt;Hello&lt;/p&gt;</code></td><td>Web page structure</td></tr>
+<tr><td>Protocol Buffers etc.</td><td>binary</td><td>Compact, fast machine-to-machine data</td></tr>
+</table>
+
+<h3>Serialisation</h3>
+<p><b>Serialising</b> turns in-memory objects into bytes/text to save or send; <b>deserialising</b> reverses it.</p>
+<pre><code>import json
+text = json.dumps({"name": "Ana", "age": 21})   # object → string
+data = json.loads(text)                          # string → object
+with open("user.json", "w", encoding="utf-8") as f:
+    json.dump(data, f)</code></pre>
+<div class="box">Never trust incoming data: validate it. Malformed JSON, huge files and unexpected types are normal on the internet. Also, never deserialise untrusted data with formats that can execute code (e.g. Python <code>pickle</code>).</div>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="10-debugging.html">← Debugging</a><a href="12-frontend.html">Next: HTML, CSS, JS & DOM →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"At the lowest level, a file is:",options:["Text","A sequence of bytes","A folder","An image"],answer:1,why:"Even 'text' is bytes interpreted via an encoding."},
+{q:"Which encoding should you default to?",options:["ASCII","UTF-8","Latin-1","UTF-7"],answer:1,why:"UTF-8 covers all of Unicode and is the web standard."},
+{q:"You see 'cafÃ©' on a page. What happened?",options:["Server crashed","UTF-8 bytes were read as another encoding (mojibake)","Image failed","DNS error"],answer:1,why:"The encoding was mismatched between writer and reader."},
+{q:"Which of these is valid JSON?",options:["{name: 'Ana'}","{\"name\": \"Ana\"}","{\"name\": \"Ana\",}","name=Ana"],answer:1,why:"Keys and strings need double quotes; trailing commas aren't allowed."},
+{q:"What is serialisation?",options:["Sorting data","Converting in-memory objects into a storable/sendable form","Encrypting","Compressing only"],answer:1,why:"e.g. object → JSON text."},
+{q:"Which format is typically the default for web APIs today?",options:["JSON","BMP","COBOL","DOCX"],answer:0,why:"JSON is lightweight and native to JavaScript."},
+{q:"The string 'é' in UTF-8 takes:",options:["Always 1 byte","2 bytes","8 bytes","0 bytes"],answer:1,why:"Non-ASCII characters take multiple bytes; so byte length ≠ character count."}
+];
+window.THINK=[
+{q:"A CSV has a name field containing a comma, like 'Smith, John'. How does the format cope and what goes wrong in a naive parser?",a:"Fields with commas are wrapped in quotes: <code>\"Smith, John\",42</code>. A naive <code>line.split(',')</code> splits inside the name. Use a CSV library."},
+{q:"Why would a team choose JSON over a binary format for an API, and when would they not?",a:"JSON is readable, debuggable, universal. Binary is smaller/faster, which matters at high volume or low bandwidth."}
+];
+</script><script src="quiz.js"></script></body></html>

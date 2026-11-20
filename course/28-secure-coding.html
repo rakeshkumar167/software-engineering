@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>28. Secure Coding</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="28"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>28. Secure Coding: OWASP Top 10, Validation, Secrets</h1>
+<p class="lead">Assume someone is actively trying to break your app, because someone is.</p>
+<section class="hf">
+<h2>🏦 Start here: the bank vault</h2>
+<div class="story"><b class="t">A story</b>
+A bank doesn't rely on one lock. It has a locked front door, guards, cameras, a vault with a time-lock, dye packs in the cash, and each employee only has keys to what they need. If one layer fails, others still protect the money. And the bank <em>assumes</em> someone will try to rob it.<br><br>
+Secure coding is the same mindset. Assume <b>someone is actively trying to break your app</b> (they are: bots probe new sites within minutes). Build in <b>layers</b>.</div>
+
+<h3>Four rules that prevent most disasters</h3>
+<pre class="fig">  1. NEVER TRUST INPUT         everything from users/clients/other systems is "dirty" until checked
+  2. LEAST PRIVILEGE           every account/service gets only the access it truly needs
+  3. DEFENCE IN DEPTH          multiple layers; assume any one can fail
+  4. FAIL SAFELY               errors should deny access and reveal nothing, not open the door</pre>
+<p><b>CIA triad</b>: protect <b>C</b>onfidentiality (only the right people read it), <b>I</b>ntegrity (nobody alters it improperly), <b>A</b>vailability (it works when needed).</p>
+
+<h3>Attack tour #1: Injection (data becomes code)</h3>
+<p>Whenever user input is glued into a command, an attacker can sneak in their own commands.</p>
+<pre><code># 😱 Command injection
+host = request.args["host"]           # attacker sends:  8.8.8.8; cat /etc/passwd
+os.system("ping -c1 " + host)         # runs BOTH commands!
+
+# ✅ pass arguments as a list, no shell involved
+subprocess.run(["ping", "-c1", host], check=True)
+
+# 😱 SQL injection (module 18)  →  ✅ parameterised queries
+# 😱 XSS (module 14)            →  ✅ escape output / textContent</code></pre>
+<p>Pattern: <b>keep data and code separate.</b> Use APIs that treat input strictly as <em>data</em>.</p>
+
+<h3>Attack tour #2: Broken access control (the #1 real-world flaw)</h3>
+<pre class="fig">  You're logged in as user 17, viewing   /invoices/1042   (yours)
+  You change the URL to                   /invoices/1043   (someone else's)  ← server returns it!</pre>
+<p>Logging in isn't enough; the server must check <b>"does THIS user own THIS thing?"</b> on <em>every</em> request, deny by default, and never rely on hiding buttons in the UI.</p>
+
+<h3>Attack tour #3: Things that leak</h3>
+<table>
+<tr><th>Mistake</th><th>Fix</th></tr>
+<tr><td>Detailed error/stack trace shown to users</td><td>Generic message to the user; details only in private logs</td></tr>
+<tr><td>Secrets in code, git or logs</td><td>Env vars / secrets manager; rotate leaks (module 23)</td></tr>
+<tr><td>Debug mode left on in production</td><td>Separate config per environment</td></tr>
+<tr><td>Open cloud storage bucket</td><td>Private by default; audit permissions</td></tr>
+<tr><td>HTTP instead of HTTPS</td><td>HTTPS everywhere + HSTS header</td></tr>
+</table>
+
+<h3>Validate input: the bouncer at the door</h3>
+<pre><code>def create_user(data):
+    email = data.get("email", "")
+    age   = data.get("age")
+    if not isinstance(email, str) or len(email) &gt; 254 or "@" not in email:
+        raise ValueError("invalid email")
+    if not isinstance(age, int) or not (0 &lt;= age &lt;= 130):
+        raise ValueError("invalid age")
+    ...</code></pre>
+<ul>
+<li>Check <b>type, length, range, format</b>. Prefer <b>allow-lists</b> ("only these characters") over block-lists.</li>
+<li>Always on the <b>server</b>; client-side checks are for convenience only.</li>
+<li>File uploads: limit size, check real type, random filenames, store outside the web root.</li>
+</ul>
+
+<h3>The supply chain: you ship other people's code too</h3>
+<p>A typical app is ~90% third-party libraries. A vulnerability in one becomes <em>your</em> vulnerability.</p>
+<ul>
+<li>Run <code>npm audit</code> / <code>pip-audit</code> / Dependabot; update regularly.</li>
+<li>Pin versions with lock files; prefer well-maintained packages; beware look-alike names (<code>reqeusts</code>).</li>
+<li>Protect your CI and deploy keys too.</li>
+</ul>
+
+<h3>SSRF: tricking your server into fetching secrets</h3>
+<p>Your app has a "fetch this image URL" feature. The attacker supplies <code>http://169.254.169.254/...</code>, an internal cloud metadata address, and your server cheerfully fetches its own credentials for them. <b>Defence:</b> allow-list destinations; block internal address ranges.</p>
+
+<div class="brain"><b class="t">Brain power</b>A login page says "No account with that email" for unknown emails and "Wrong password" for known ones. What does this give an attacker? <em>A way to find which emails have accounts (user enumeration). Use one generic message: "Email or password incorrect."</em></div>
+
+<h3>Security habits checklist</h3>
+<ul>
+<li>Rate-limit logins and expensive endpoints; lock out brute force.</li>
+<li>Security headers: <code>Strict-Transport-Security</code>, <code>Content-Security-Policy</code>, <code>X-Content-Type-Options</code>.</li>
+<li>Don't invent your own crypto; use vetted libraries.</li>
+<li>Log security events (failed logins, permission denials) and monitor them (module 26).</li>
+<li><b>Threat model early</b>: ask "What could go wrong? Who'd attack? What would they gain?"</li>
+<li>If you find a vulnerability in someone's system, report it responsibly; don't exploit it.</li>
+</ul>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Is my small app really a target?</summary><p>Yes. Attacks are automated: bots scan the whole internet for known flaws, default passwords and leaked keys. Size doesn't protect you.</p></details>
+<details class="dumb"><summary>Q: Isn't HTTPS enough?</summary><p>It protects data in transit only. It does nothing about SQL injection, broken access control, weak passwords or leaked keys.</p></details>
+<details class="dumb"><summary>Q: What's the OWASP Top 10?</summary><p>A regularly updated list of the most common serious web-app risks (injection, broken access control, misconfiguration, vulnerable components…). Great checklist to review your apps against.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: find the flaws</summary>
+<p><pre><code>@app.get("/download")
+def download():
+    name = request.args["file"]
+    return open("/var/app/uploads/" + name).read()</code></pre>What's wrong? <br><b>Answer:</b> <b>path traversal</b>: <code>?file=../../etc/passwd</code> reads any file. Also no access check on who owns the file and no size/type limits. Fix: resolve and verify the path stays inside the uploads folder, use IDs instead of filenames, check ownership.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Never trust input; validate on the server; keep data separate from code (parameterise, escape).</li>
+<li>Always check <em>who may do what</em> on every request; deny by default.</li>
+<li>Least privilege, layered defences, safe failure, generic errors.</li>
+<li>Protect secrets and dependencies; scan and update.</li>
+<li>Think like an attacker (threat-model) and monitor for abuse.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Security is a property of the whole system. Core mindset: <b>never trust input</b>, give the <b>least privilege</b>, layer defences (<b>defence in depth</b>), and fail safely.</div>
+
+<h3>CIA triad</h3>
+<p><b>Confidentiality</b> (only authorised people read), <b>Integrity</b> (data isn't altered improperly), <b>Availability</b> (system works when needed).</p>
+
+<h3>OWASP Top 10 (themes)</h3>
+<table>
+<tr><th>Risk</th><th>What it looks like</th><th>Defence</th></tr>
+<tr><td>Broken access control</td><td>Changing <code>/orders/17</code> to 18; user reaching admin routes</td><td>Server-side authorization on every request, deny by default (module 5)</td></tr>
+<tr><td>Cryptographic failures</td><td>Plain-text passwords, HTTP, weak hashes</td><td>HTTPS, Argon2/bcrypt, modern algorithms, no home-made crypto</td></tr>
+<tr><td>Injection</td><td>SQL, command, template injection; XSS</td><td>Parameterised queries, escaping, avoid shelling out with user input (modules 14, 18)</td></tr>
+<tr><td>Insecure design</td><td>No rate limit on login, no abuse thinking</td><td>Threat modelling early</td></tr>
+<tr><td>Security misconfiguration</td><td>Default passwords, debug on, open S3 bucket, verbose errors</td><td>Hardened defaults, review config, least exposure</td></tr>
+<tr><td>Vulnerable components</td><td>Outdated library with known flaw</td><td>Dependency scanning, updates, lockfiles</td></tr>
+<tr><td>Auth failures</td><td>Weak passwords, session fixation, no MFA</td><td>Modules 5 and 17</td></tr>
+<tr><td>Integrity failures</td><td>Unsigned updates, insecure deserialisation, compromised CI/packages</td><td>Verify signatures, pin dependencies</td></tr>
+<tr><td>Logging/monitoring failures</td><td>Attack goes unnoticed</td><td>Log security events and alert (module 26)</td></tr>
+<tr><td>SSRF</td><td>Server fetches a URL an attacker supplies, reaching internal services</td><td>Allow-list destinations; block internal ranges</td></tr>
+</table>
+
+<h3>Input validation</h3>
+<ul>
+<li>Validate on the <b>server</b>: type, length, range, format. Prefer <b>allow-lists</b> (what's permitted) over deny-lists.</li>
+<li>Then <b>encode for the output context</b> (HTML, SQL, shell, URL).</li>
+<li>File uploads: limit size, check type by content, store outside the web root, random names.</li>
+<li>Command injection example:
+<pre><code># BAD:  os.system("ping " + host)         # host = "x; rm -rf /"
+# GOOD: subprocess.run(["ping", "-c1", host], check=True)   # no shell</code></pre></li>
+</ul>
+
+<h3>Habits</h3>
+<ul>
+<li><b>Least privilege</b>: DB user can't drop tables; service has only the cloud permissions it needs.</li>
+<li><b>Secrets</b> out of code/logs/git (module 23). Rotate.</li>
+<li><b>Keep dependencies updated</b>; run <code>npm audit</code> / <code>pip-audit</code> / Dependabot. Supply-chain attacks target packages you trust.</li>
+<li><b>Rate limit</b> and add lockouts for login and expensive endpoints.</li>
+<li><b>Error handling</b>: show users a generic message; log details privately; no stack traces to clients.</li>
+<li><b>Security headers</b>: <code>Strict-Transport-Security</code>, <code>Content-Security-Policy</code>, <code>X-Content-Type-Options</code>.</li>
+<li><b>Threat modelling</b>: ask "what can go wrong? who would attack? what do they gain?" (STRIDE). Responsible disclosure: report found bugs to owners, never exploit without permission.</li>
+<li>Don't roll your own crypto; use vetted libraries.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="27-design.html">← Design</a><a href="29-ai-tools.html">Next: Working with AI Tools →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"CIA in security stands for:",options:["Confidentiality, Integrity, Availability","Code, Input, Access","Cache, Index, API","Cloud, Internet, Apps"],answer:0,why:"The classic goals."},
+{q:"The #1 rule for user input:",options:["Trust but verify later","Never trust it; validate on the server","Validate in the browser only","Log it"],answer:1,why:"Client-side checks are for convenience only."},
+{q:"`os.system('ping ' + host)` with user-supplied host is vulnerable to:",options:["Command injection","Clickjacking","DNS caching","CSRF"],answer:0,why:"Shell metacharacters let attackers run extra commands."},
+{q:"Least privilege means:",options:["Give everything full access","Grant only the permissions required","Remove logging","Share one admin account"],answer:1,why:"Limits damage if something is compromised."},
+{q:"Which is broken access control?",options:["A user edits another user's profile by changing an ID in the URL","Weak CSS","Slow queries","Unminified JS"],answer:0,why:"Missing ownership check on the server."},
+{q:"Why scan dependencies?",options:["Known vulnerabilities in libraries become vulnerabilities in your app","To reduce size","For licensing only","No reason"],answer:0,why:"Most of your code is other people's code."},
+{q:"What should the client see when an unexpected exception occurs?",options:["Full stack trace","A generic error message, with details logged server-side","Database credentials","Nothing and a 200"],answer:1,why:"Detailed errors help attackers."},
+{q:"SSRF is when:",options:["The server is tricked into making requests to attacker-chosen URLs, e.g. internal services","A cookie is stolen","A password is guessed","DNS is cached"],answer:0,why:"Classic cloud issue: reaching metadata services."},
+{q:"Should you implement your own encryption algorithm?",options:["Yes for control","No, use vetted libraries","Only for passwords","Only in JS"],answer:1,why:"Crypto is extremely easy to get subtly wrong."}
+];
+window.THINK=[
+{q:"Threat-model a 'forgot password' feature. What can go wrong?",a:"Email enumeration, guessable/long-lived reset tokens, token reuse, no rate limit, reset link leaking via Referer or logs, account takeover via compromised email, host header poisoning in the link. Mitigate: random single-use short-lived tokens, generic responses, rate limiting, notify the user."},
+{q:"A researcher emails you about a vulnerability in your site. How should you respond?",a:"Thank them, acknowledge quickly, verify and fix, communicate honestly, never threaten; publish a security contact (security.txt) and disclosure policy in advance."}
+];
+</script><script src="quiz.js"></script></body></html>

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>26. Logging, Monitoring, Observability</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="26"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>26. Logging, Monitoring, Observability and Incident Basics</h1>
+<p class="lead">You can't fix what you can't see, and production is where you can't attach a debugger.</p>
+<section class="hf">
+<h2>🏥 Start here: the hospital monitor</h2>
+<div class="story"><b class="t">A story</b>
+A patient in intensive care is wired to machines: a heart-rate graph, blood pressure, oxygen level, and a <b>chart</b> where nurses write down everything that happens. Nobody stares at the patient hoping to <em>guess</em> they're okay.<br><br>
+Your live software needs the same. Once it's running on a server, you can't attach a debugger or watch it with your own eyes. You need it to <b>report</b> how it's doing:<br>
+📝 <b>Logs</b> = the nurse's chart (what happened, when)<br>
+📈 <b>Metrics</b> = the vital-signs graphs (numbers over time)<br>
+🧭 <b>Traces</b> = a tracking number following one request through every department<br>
+🚨 <b>Alerts</b> = the alarm that wakes a doctor</div>
+
+<h3>Logs: write down what's happening</h3>
+<pre><code>import logging, json
+log = logging.getLogger("checkout")
+
+log.info("order placed", extra={"order_id": 991, "user_id": 42, "total": 30.0})
+log.error("payment failed", extra={"order_id": 991, "reason": "card_declined"})
+
+# what ends up on the server (structured JSON, searchable!)
+{"ts":"2026-11-20T10:03:11Z","level":"ERROR","service":"checkout",
+ "request_id":"7f3a9c","msg":"payment failed","order_id":991,"reason":"card_declined"}</code></pre>
+<table>
+<tr><th>Level</th><th>Use</th></tr>
+<tr><td>DEBUG</td><td>Fine detail for developers (off in production)</td></tr>
+<tr><td>INFO</td><td>Normal milestones ("order placed")</td></tr>
+<tr><td>WARNING</td><td>Odd but survivable ("retrying payment")</td></tr>
+<tr><td>ERROR</td><td>Something failed</td></tr>
+<tr><td>CRITICAL</td><td>System is going down</td></tr>
+</table>
+<div class="fixit"><b>Never log</b> passwords, tokens, full card numbers or sensitive personal data. Logs are copied, searched and kept for a long time by many people.</div>
+<p><b>Request ID trick:</b> give every incoming request a unique ID and include it in every log line. When a customer says "my order failed", you search that one ID and see the entire story across all services.</p>
+
+<h3>Metrics: the vital signs</h3>
+<p>Numbers sampled over time, shown as graphs. The four <b>golden signals</b> to watch for any service:</p>
+<pre class="fig">  🕐 LATENCY     how long do requests take?
+  📊 TRAFFIC     how many requests per second?
+  ❌ ERRORS      what % of requests fail?
+  🔥 SATURATION  how "full" is the system? (CPU, memory, disk, connections)</pre>
+<div class="brain"><b class="t">Brain power</b>Average response time is 100 ms, but users complain it's slow. How can both be true? <em>Averages hide the tail. If 5% of users wait 3 seconds, the average still looks fine. Look at <b>percentiles</b>: p50, p95, p99.</em></div>
+
+<h3>Traces: follow one request through the maze</h3>
+<pre class="fig">  request 7f3a9c   total 850 ms
+  ├─ web server            ███ 40 ms
+  ├─ auth service          ██ 30 ms
+  ├─ order service         ██████████████████ 700 ms   ◄── the slow part!
+  │   └─ database query    ████████████████ 650 ms     ◄── specifically THIS
+  └─ send response         █ 20 ms</pre>
+<p>Tools: Prometheus + Grafana (metrics), Loki/ELK/CloudWatch (logs), OpenTelemetry + Jaeger (traces), Datadog (all-in-one), Sentry (error tracking).</p>
+
+<h3>Alerts: wake me only when it matters</h3>
+<ul>
+<li>Alert on <b>what users feel</b> (error rate, latency), not every CPU blip.</li>
+<li>Every alert must be <b>actionable</b>. Constant false alarms cause <em>alert fatigue</em> and people ignore the real one.</li>
+<li><b>Health endpoint</b> (<code>/healthz</code> returns 200) lets load balancers and monitors check the app is alive.</li>
+<li><b>SLO</b> (Service Level Objective): "99.9% of requests succeed in under 500 ms." The allowed failure is your <b>error budget</b>.</li>
+</ul>
+
+<h3>When it breaks: incident basics</h3>
+<pre class="fig">  DETECT ► TRIAGE ► MITIGATE FIRST ► COMMUNICATE ► ROOT CAUSE ► POSTMORTEM
+  (alert)  (how bad?   (rollback, turn   (status page,   (why, really?)  (what will we
+           who's on     off feature,      tell users)                     change? no blame)
+           call?)       scale up)</pre>
+<p>The first goal is <b>stop the pain</b> (roll back!), not find the culprit. After it's over, write a <b>blameless postmortem</b>: timeline, causes, and improvements to the <em>system</em>. People make mistakes; good systems make them hard to do.</p>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Monitoring vs observability?</summary><p>Monitoring asks questions you thought of in advance ("is CPU high?"). Observability gives you rich enough data to investigate questions you <em>didn't</em> anticipate.</p></details>
+<details class="dumb"><summary>Q: Where do logs go in a container?</summary><p>Write them to stdout; the platform collects them. Don't write log files inside a container that disappears.</p></details>
+<details class="dumb"><summary>Q: Can I log too much?</summary><p>Yes: costs money and buries the signal. Log events with useful context, not every line of execution.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: which signal?</summary>
+<p>(1) "Which of my 6 microservices made checkout slow?" (2) "How many 500 errors per minute?" (3) "Why did order 991 fail?"<br><b>Answer:</b> (1) trace, (2) metric, (3) logs (searched by order or request ID).</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Observability = logs (events), metrics (numbers), traces (request journeys).</li>
+<li>Use structured logs with request IDs; never log secrets.</li>
+<li>Watch latency, traffic, errors, saturation; use percentiles, not averages.</li>
+<li>Alerts must be actionable; in an incident, mitigate first, then investigate, then learn blamelessly.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b><b>Monitoring</b> tells you <em>that</em> something is wrong (known questions). <b>Observability</b> lets you work out <em>why</em> (new questions) from the data your system emits: <b>logs, metrics, traces</b>.</div>
+
+<h3>Three pillars</h3>
+<table>
+<tr><th>Signal</th><th>What</th><th>Good for</th></tr>
+<tr><td><b>Logs</b></td><td>Timestamped event records</td><td>Details of a specific event or error</td></tr>
+<tr><td><b>Metrics</b></td><td>Numbers over time (requests/s, error %, CPU, latency)</td><td>Dashboards, trends, alerts</td></tr>
+<tr><td><b>Traces</b></td><td>One request's path through many services, with timings</td><td>Finding which hop is slow</td></tr>
+</table>
+
+<h3>Logging well</h3>
+<pre><code>{"ts":"2026-11-20T10:03:11Z","level":"ERROR","service":"checkout",
+ "request_id":"7f3a9c","user_id":42,"msg":"payment failed","error":"card_declined","ms":812}</code></pre>
+<ul>
+<li><b>Levels</b>: DEBUG, INFO, WARNING, ERROR, CRITICAL. Production usually INFO+.</li>
+<li><b>Structured (JSON) logs</b> are searchable. Include a <b>request/correlation ID</b> to follow one request across services.</li>
+<li>Log to <b>stdout</b>; the platform collects it (ELK, Loki, CloudWatch, Datadog).</li>
+<li><b>Never log</b> passwords, tokens, full card numbers or sensitive personal data.</li>
+<li>Log what happened and context, not noise. Too much hides the signal and costs money.</li>
+</ul>
+
+<h3>Metrics that matter</h3>
+<ul>
+<li><b>Golden signals</b>: <b>latency</b>, <b>traffic</b>, <b>errors</b>, <b>saturation</b> (how full the resource is).</li>
+<li>Use <b>percentiles</b> (p50, p95, p99), not averages: average 100 ms can hide 5% of users waiting 5 s.</li>
+<li><b>SLI / SLO / SLA</b>: indicator (measured, e.g. % successful requests), objective (target, 99.9%), agreement (contract with penalties). An <b>error budget</b> is the allowed failure.</li>
+<li>Tools: Prometheus + Grafana, Datadog, CloudWatch. Tracing: OpenTelemetry, Jaeger.</li>
+<li><b>Health endpoints</b> (<code>/healthz</code>) used by load balancers (module 16) and orchestrators.</li>
+</ul>
+
+<h3>Alerting and incidents</h3>
+<ul>
+<li>Alert on <b>symptoms users feel</b> (error rate, latency), not every CPU blip. Each alert should be actionable; alert fatigue is dangerous.</li>
+<li><b>Incident flow</b>: detect → triage (severity, who's on call) → <b>mitigate first</b> (rollback, disable feature, scale) → communicate → find root cause → restore.</li>
+<li><b>Blameless postmortem</b>: timeline, root causes, what went well, action items. Focus on systems, not people.</li>
+<li>Also monitor from outside (<b>synthetic checks</b>) and watch certificate/domain expiry.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="25-cicd.html">← CI/CD</a><a href="27-design.html">Next: Software Design →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"Name the three pillars of observability.",options:["Logs, metrics, traces","CPU, RAM, disk","Dev, staging, prod","HTTP, DNS, TCP"],answer:0,why:"Events, numbers over time, request paths."},
+{q:"Which is best for spotting a slow service among many?",options:["Traces","A single log line","Git history","Screenshots"],answer:0,why:"Distributed traces show time spent per hop."},
+{q:"Why include a request ID in every log line?",options:["Looks nice","Correlate all logs from one request across services","Required by JSON","Reduce size"],answer:1,why:"Filter by ID to see the whole story."},
+{q:"Which should never be logged?",options:["Request path","Passwords and tokens","Status code","Duration"],answer:1,why:"Logs are widely accessible and long-lived."},
+{q:"Average latency is 100 ms but users complain. Why look at p99?",options:["Averages hide slow outliers","p99 is always lower","Averages are exact","It's required"],answer:0,why:"A slow tail affects real users."},
+{q:"During an outage, the first priority is usually:",options:["Find the root cause for the report","Mitigate: restore service (rollback, failover)","Blame the author","Rewrite the system"],answer:1,why:"Stop the bleeding, then investigate."},
+{q:"A blameless postmortem focuses on:",options:["Who made the mistake","Systems and process improvements","Hiding details","Only code"],answer:1,why:"People work in systems; fix the system so mistakes become hard."},
+{q:"A good alert is:",options:["Triggered by every CPU spike","Actionable and tied to user-visible impact","Sent to everyone","Silent"],answer:1,why:"Prevents alert fatigue."}
+];
+window.THINK=[
+{q:"Customers report 'checkout is slow' but dashboards look green. What would you add?",a:"Latency percentiles per endpoint, traces through checkout, synthetic checks, client-side metrics, and logs with request IDs; probably the dashboard averaged away the slow tail or lacks that endpoint."},
+{q:"Define an SLO for a login API and what happens when the error budget is spent.",a:"e.g. 99.9% of login requests succeed within 500 ms over 30 days. When the budget is spent, pause risky releases and prioritise reliability work."}
+];
+</script><script src="quiz.js"></script></body></html>

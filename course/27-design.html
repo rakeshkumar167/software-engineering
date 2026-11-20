@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>27. Software Design</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="27"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>27. Software Design: Modularity, SOLID, Patterns, Code Review</h1>
+<p class="lead">Code is read far more than it is written. Design for the next person (often you).</p>
+<section class="hf">
+<h2>🧰 Start here: the messy garage vs the organised workshop</h2>
+<div class="story"><b class="t">A story</b>
+Two people each own a garage full of tools.<br>
+🗑️ <b>Garage A</b>: everything piled together. Need a screwdriver? Dig for ten minutes. Move one box and three others fall over.<br>
+🧼 <b>Garage B</b>: labelled drawers, each tool in a logical place, a pegboard outline showing where it belongs. Find anything in seconds. Adding a new tool means just adding a hook.<br><br>
+Code gets read and changed <b>far more often than it's written</b>. Software design is about building Garage B, so the next change (probably made by you in six months) is easy and safe.</div>
+
+<h3>The two golden ideas</h3>
+<pre class="fig">  HIGH COHESION                         LOW COUPLING
+  each piece does ONE related job       pieces depend on each other as little as possible
+  ┌──────────────┐                      [Orders] ─ uses small interface ─► [Payments]
+  │ PaymentTools │  charge, refund       change how Payments works internally →
+  └──────────────┘  (not also: send      Orders doesn't care, doesn't break</pre>
+
+<h3>Messy vs tidy: one real example</h3>
+<pre><code># 😖 MESSY: one function does validation, tax, email, database, and printing
+def process(o):
+    if o["items"] == []: print("err"); return
+    t = 0
+    for i in o["items"]: t += i[1] * i[2] * 1.2     # what is 1.2? what's i[1]?
+    db.execute("INSERT ...")
+    smtp.send(o["email"], "Thanks!")
+    print("done")
+
+# 😊 TIDY: small named pieces, each easy to read and test
+TAX_RATE = 0.20
+
+def order_total(items):
+    return sum(item.price * item.qty for item in items) * (1 + TAX_RATE)
+
+def place_order(order, db, notifier):
+    if not order.items:
+        raise ValueError("order has no items")
+    order.total = order_total(order.items)
+    db.save(order)
+    notifier.send(order.email, "Thanks for your order!")</code></pre>
+<p>What improved: names explain intent, "magic number" 1.2 got a name, each function has one job, and <code>db</code> and <code>notifier</code> are <b>passed in</b>. So in tests you can pass fakes. (That's <b>dependency injection</b>.)</p>
+
+<h3>SOLID: five habits in plain English</h3>
+<table>
+<tr><th></th><th>Idea</th><th>Kitchen analogy</th></tr>
+<tr><td><b>S</b>ingle Responsibility</td><td>A class/module has one reason to change</td><td>The chef cooks; the accountant does the books</td></tr>
+<tr><td><b>O</b>pen/Closed</td><td>Add new behaviour without editing old working code</td><td>Add a new topping without rebuilding the oven</td></tr>
+<tr><td><b>L</b>iskov Substitution</td><td>A subtype must work wherever the parent is expected</td><td>Any "driver" can drive any "car"</td></tr>
+<tr><td><b>I</b>nterface Segregation</td><td>Small focused interfaces, not one giant one</td><td>A remote with only the buttons you use</td></tr>
+<tr><td><b>D</b>ependency Inversion</td><td>Depend on abstractions, not concrete details</td><td>Plug any appliance into a standard socket</td></tr>
+</table>
+
+<h3>Patterns: named, tested solutions</h3>
+<p>Others have faced your problem before and named the solution. Knowing the names helps you talk about design:</p>
+<pre><code># STRATEGY: swap interchangeable behaviours behind one interface
+class StandardShipping:  def cost(self, w): return 5
+class ExpressShipping:   def cost(self, w): return 5 + 2 * w
+
+def checkout(weight, shipping):        # works with ANY strategy
+    return shipping.cost(weight)
+
+checkout(3, StandardShipping())   # 5
+checkout(3, ExpressShipping())    # 11   (add "DroneShipping" later without touching checkout!)</code></pre>
+<table>
+<tr><th>Pattern</th><th>One-liner</th></tr>
+<tr><td>Factory</td><td>One place decides which object to create</td></tr>
+<tr><td>Observer / pub-sub</td><td>"Tell me when X happens" (many listeners)</td></tr>
+<tr><td>Adapter</td><td>A plug converter between incompatible interfaces</td></tr>
+<tr><td>Repository</td><td>Hide database details behind a simple interface</td></tr>
+<tr><td>Singleton</td><td>Exactly one instance (use rarely, it's hidden global state)</td></tr>
+</table>
+<div class="brain"><b class="t">Brain power</b>Are design patterns something to apply to every program? <em>No. They're vocabulary for recurring problems. Forcing a pattern where none is needed adds complexity (see YAGNI: "You Aren't Gonna Need It").</em></div>
+
+<h3>Code smells: hints that something's off</h3>
+<ul>
+<li>Functions longer than a screen; deeply nested <code>if</code>s (use early returns).</li>
+<li>Copy-pasted code (but don't abstract too early: wait for the 3rd repeat, "rule of three").</li>
+<li>Mysterious names: <code>d</code>, <code>tmp2</code>, <code>process()</code>.</li>
+<li>Functions with 6+ parameters or boolean flags that change behaviour.</li>
+<li>Comments explaining confusing code (rewrite the code instead).</li>
+</ul>
+<p><b>Refactoring</b> = improving structure without changing behaviour, with tests as your safety net. <b>Technical debt</b> = shortcuts taken now that cost interest later. Borrow on purpose; repay regularly.</p>
+
+<h3>Code review: a conversation, not a trial</h3>
+<div class="convo">
+<p class="a"><b>Weak</b>"This is wrong."</p>
+<p class="b"><b>Strong</b>"What happens if the cart is empty here? I think <code>sum()</code> returns 0 but <code>len()</code> would be a divide-by-zero on line 12. Could we add a guard?"</p>
+</div>
+<ul>
+<li><b>Authors</b>: small PRs, good descriptions, tests included, self-review first, welcome feedback.</li>
+<li><b>Reviewers</b>: check correctness, edge cases, security, clarity, tests. Ask questions, suggest, be kind. Review the <em>code</em>, never the person.</li>
+<li>Let formatters/linters handle style so humans discuss design.</li>
+</ul>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: How do I know if a function is "too big"?</summary><p>If you can't describe it in one short sentence without "and", split it. If you can't name it clearly, it probably does too much.</p></details>
+<details class="dumb"><summary>Q: Is object-oriented design required?</summary><p>No. These ideas (cohesion, coupling, clarity) apply to functions, modules and services, in any paradigm.</p></details>
+<details class="dumb"><summary>Q: Shouldn't I design everything perfectly upfront?</summary><p>No. Start simple, keep things easy to change, refine as you learn what the real requirements are.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: improve this</summary>
+<p><code>def f(a, b): return a * b * 0.18 + a</code> What are 3 improvements?<br><b>Answer:</b> a descriptive name (<code>price_with_tax</code>), meaningful parameters (<code>price, quantity</code>), a named constant for <code>0.18</code> (<code>TAX_RATE</code>), and clearer formula/order. Also consider a docstring or a test.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Aim for high cohesion, low coupling; code is read more than written.</li>
+<li>Name things well, keep functions small, avoid magic numbers, inject dependencies.</li>
+<li>SOLID and patterns are vocabulary and guidance; use when needed, not for show.</li>
+<li>Refactor with tests; manage technical debt; review code kindly and specifically.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Good design makes change <b>cheap</b>. Split a system into parts with <b>high cohesion</b> (each part does one related thing) and <b>low coupling</b> (parts depend on each other as little as possible).</div>
+
+<h3>Core principles</h3>
+<ul>
+<li><b>Abstraction</b>: hide details behind a simple interface (you call <code>send_email()</code>, not SMTP bytes).</li>
+<li><b>Encapsulation</b>: keep internal data private; expose a small public API.</li>
+<li><b>DRY</b>: don't repeat knowledge. But don't force abstraction on coincidentally similar code.</li>
+<li><b>KISS / YAGNI</b>: keep it simple; don't build what you don't need yet.</li>
+<li><b>Separation of concerns</b>: UI, business rules and data access in different places (module 19).</li>
+<li><b>Composition over inheritance</b>: build from small parts rather than deep class hierarchies.</li>
+</ul>
+
+<h3>SOLID (object-oriented guidelines)</h3>
+<table>
+<tr><th></th><th>Principle</th><th>In plain words</th></tr>
+<tr><td>S</td><td>Single Responsibility</td><td>A class/module has one reason to change</td></tr>
+<tr><td>O</td><td>Open/Closed</td><td>Extend behaviour without editing tested code</td></tr>
+<tr><td>L</td><td>Liskov Substitution</td><td>A subtype must work wherever its parent is expected</td></tr>
+<tr><td>I</td><td>Interface Segregation</td><td>Many small interfaces beat one giant one</td></tr>
+<tr><td>D</td><td>Dependency Inversion</td><td>Depend on abstractions; inject dependencies</td></tr>
+</table>
+<pre><code># Dependency injection: easy to test with a fake notifier
+class OrderService:
+    def __init__(self, notifier):
+        self.notifier = notifier
+    def place(self, order):
+        ...
+        self.notifier.send(order.user, "Order placed")
+
+OrderService(EmailNotifier()); OrderService(FakeNotifier())  # prod vs test</code></pre>
+
+<h3>Design patterns (named solutions to recurring problems)</h3>
+<table>
+<tr><th>Pattern</th><th>Use</th></tr>
+<tr><td>Factory</td><td>Centralise object creation</td></tr>
+<tr><td>Strategy</td><td>Swap algorithms (shipping cost rules) behind one interface</td></tr>
+<tr><td>Observer / pub-sub</td><td>Notify many listeners of an event</td></tr>
+<tr><td>Adapter</td><td>Wrap an incompatible API to match what you expect</td></tr>
+<tr><td>Singleton</td><td>One instance (use sparingly; hidden global state)</td></tr>
+<tr><td>Repository</td><td>Hide database access behind an interface</td></tr>
+</table>
+<p>Patterns are vocabulary, not goals. Use one when the problem appears, not to look sophisticated.</p>
+
+<h3>Readable code</h3>
+<ul>
+<li>Names reveal intent (<code>days_until_expiry</code> not <code>d</code>). Small functions. Avoid deep nesting (early returns). No magic numbers: name constants.</li>
+<li><b>Code smells</b>: long functions, duplicated code, giant classes, many parameters, boolean flags that change behaviour, comments explaining confusing code (rewrite the code).</li>
+<li><b>Refactoring</b>: change structure without changing behaviour, backed by tests (module 20). The "boy scout rule": leave code cleaner than you found it.</li>
+<li><b>Technical debt</b>: shortcuts that speed now and slow later. Take it consciously, and repay it.</li>
+</ul>
+
+<h3>Code review</h3>
+<ul>
+<li>Goals: catch bugs, share knowledge, keep standards, not to show off or police.</li>
+<li><b>Authors</b>: small PRs, clear description, self-review, tests, respond kindly.</li>
+<li><b>Reviewers</b>: check correctness, edge cases, security, readability, tests; ask questions; suggest, don't command; comment on code, not the person; approve when good enough, not perfect.</li>
+<li>Automate nitpicks (formatters, linters) so humans discuss design.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="26-observability.html">← Observability</a><a href="28-secure-coding.html">Next: Secure Coding →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"High cohesion and low coupling means:",options:["Parts are focused and depend little on each other","Everything in one file","Many global variables","Deep inheritance"],answer:0,why:"Changes stay local."},
+{q:"Single Responsibility Principle:",options:["A class has one reason to change","One class per file","One function per program","No classes"],answer:0,why:"Mixed responsibilities mean changes ripple."},
+{q:"Dependency injection helps because:",options:["Components get their collaborators from outside, so you can swap in fakes for tests","It's faster","It removes classes","It's required for HTTP"],answer:0,why:"Decouples and enables testing."},
+{q:"YAGNI says:",options:["Build for every possible future","Don't build features until you actually need them","Always use patterns","Never refactor"],answer:1,why:"Speculative code costs maintenance."},
+{q:"Which is a code smell?",options:["A 400-line function with many nested ifs","Clear function names","Unit tests","Small PRs"],answer:0,why:"Hard to read, test and change."},
+{q:"Refactoring is:",options:["Adding features","Changing internal structure without changing behaviour","Fixing bugs only","Rewriting from scratch"],answer:1,why:"Tests prove behaviour is unchanged."},
+{q:"Strategy pattern fits:",options:["Swapping interchangeable algorithms behind one interface","Creating exactly one instance","Wrapping an old API","Logging"],answer:0,why:"e.g. different tax or shipping calculators."},
+{q:"A good code review comment is:",options:["'This is stupid'","'Could we handle the empty list here? It would raise IndexError.'","Silence","'Rewrite it all'"],answer:1,why:"Specific, kind, about the code."}
+];
+window.THINK=[
+{q:"Is duplicated code always bad? Explain.",a:"No. Premature abstraction can couple unrelated things. Wait until the third occurrence, or until it represents the same business rule that must change together (the 'rule of three')."},
+{q:"You must add a new payment provider to a system with provider-specific code everywhere. What design change helps?",a:"Introduce a PaymentProvider interface (Strategy/Adapter); implement per provider; inject it, so new providers don't edit core code (Open/Closed)."}
+];
+</script><script src="quiz.js"></script></body></html>

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>7. Git and Version Control</title><link rel="stylesheet" href="style.css"></head>
+<body data-page="07"><main>
+<nav class="top"><a href="index.html">← All modules</a></nav>
+<h1>7. Git and Version Control</h1>
+<p class="lead">A time machine and collaboration tool for code.</p>
+<section class="hf">
+<h2>📁 Start here: "final_FINAL_v2_reallyfinal.doc"</h2>
+<div class="story"><b class="t">A story</b>
+You've written an essay. To be safe you save copies: <code>essay.doc</code>, <code>essay_v2.doc</code>, <code>essay_FINAL.doc</code>, <code>essay_FINAL_edited.doc</code>... Now your friend edits one copy while you edit another. Which is the real one? What did <em>they</em> change?<br><br>
+<b>Git</b> solves this. Instead of copies, it keeps a <b>timeline of snapshots</b>, each with a note on what changed and who changed it. You can jump back to any moment, compare any two, and <b>merge</b> two people's work together.</div>
+
+<h3>Think of commits as save points in a video game</h3>
+<pre class="fig">  ●────●────●────●────●        ← main: each ● is a COMMIT (a snapshot + message)
+  A    B    C    D    E
+            \
+             ●────●             ← feature branch: a side quest
+             F    G</pre>
+<p>A <b>commit</b> is a saved snapshot with a message ("Add login page"). A <b>branch</b> is a separate line of commits so you can experiment without breaking the main game. When the side quest works, you <b>merge</b> it in.</p>
+
+<h3>The three boxes (the part everyone finds confusing)</h3>
+<p>Packing a moving box: first you <em>choose</em> what goes in the box, then you <em>seal and label</em> it, then you <em>ship</em> it.</p>
+<pre class="fig">  Your files      git add       Staging area     git commit     Repository      git push    GitHub
+  (editing)  ─────────────►  (items chosen) ─────────────►  (history)  ─────────────►  (shared copy)</pre>
+
+<h3>Your first 10 minutes</h3>
+<pre><code>$ mkdir my-site &amp;&amp; cd my-site
+$ git init                           # start tracking this folder
+$ echo "&lt;h1&gt;Hello&lt;/h1&gt;" &gt; index.html
+$ git status                         # shows index.html as "untracked"
+$ git add index.html                 # put it in the box
+$ git commit -m "Add home page"      # seal + label it. Save point #1!
+$ git log --oneline                  # your timeline
+a1b2c3d Add home page</code></pre>
+<p>Now change the file and use <code>git diff</code> to see exactly what changed, then <code>add</code> + <code>commit</code> again.</p>
+
+<h3>Branching without fear</h3>
+<pre><code>$ git switch -c dark-mode        # new branch (side quest)
+  ...edit, add, commit...
+$ git switch main                # back to the main timeline
+$ git merge dark-mode            # bring the side quest in</code></pre>
+
+<h3>Merge conflicts: when two people edit the same line</h3>
+<div class="convo">
+<p class="a"><b>Ana (branch A)</b>I changed the title to "Pizza Palace".</p>
+<p class="b"><b>Ben (branch B)</b>I changed that same line to "Best Pizza".</p>
+<p class="a"><b>Git</b>I can't guess who's right. You two sort it out!</p>
+</div>
+<pre><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+&lt;h1&gt;Pizza Palace&lt;/h1&gt;
+=======
+&lt;h1&gt;Best Pizza&lt;/h1&gt;
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; best-pizza</code></pre>
+<p>Open the file, keep what you want (delete the markers), <code>git add</code>, <code>git commit</code>. Done. Conflicts feel scary but are routine.</p>
+
+<div class="brain"><b class="t">Brain power</b>Why is it a bad idea to commit a file containing your database password, even if you delete it in the next commit? <em>The old commit still has it in history; anyone with the repo can find it. Treat it as leaked, change the password.</em></div>
+
+<h3>Git vs GitHub</h3>
+<p><b>Git</b> = the tool on your computer. <b>GitHub</b> (or GitLab) = a website that hosts copies of repositories so teams can share them and review each other's work through <b>pull requests</b> ("here are my changes, please review and merge").</p>
+<pre class="fig">  your laptop ── git push ──► GitHub ◄── git push ── teammate's laptop
+              ◄── git pull ──        ──► git pull</pre>
+
+<h3>There are no Dumb Questions</h3>
+<details class="dumb"><summary>Q: Why the staging area? Why not commit everything?</summary><p>So you can make <em>clean</em> commits. You edited 5 files but only 2 relate to the login fix. Stage those 2, commit "Fix login redirect", then handle the rest separately.</p></details>
+<details class="dumb"><summary>Q: I messed up. Can I undo?</summary><p>Almost always. Discard edits: <code>git restore file</code>. Undo a commit safely: <code>git revert &lt;id&gt;</code>. Git's superpower is that committed work is very hard to lose.</p></details>
+<details class="dumb"><summary>Q: What should go in a commit message?</summary><p>Short, in the imperative, saying <em>what and why</em>: "Fix crash when cart is empty". Not "stuff" or "update".</p></details>
+<details class="dumb"><summary>Q: What's <code>.gitignore</code>?</summary><p>A list of files git should never track: secrets (<code>.env</code>), build output, <code>node_modules</code>.</p></details>
+
+<details class="pencil"><summary>✏️ Sharpen your pencil: order the steps</summary>
+<p>Put in order: <code>git push</code>, edit a file, <code>git commit -m "..."</code>, <code>git add</code>.<br><b>Answer:</b> edit → <code>git add</code> → <code>git commit</code> → <code>git push</code>.</p></details>
+
+<div class="points"><b class="t">Key points</b><ul>
+<li>Git = timeline of snapshots (commits), not copies of files.</li>
+<li>Flow: edit → <code>add</code> (stage) → <code>commit</code> (save) → <code>push</code> (share).</li>
+<li>Branches let you experiment safely; <code>merge</code> combines them. Conflicts are resolved by hand.</li>
+<li>Git is the tool, GitHub is a hosting service. Never commit secrets.</li>
+</ul></div>
+</section>
+
+
+<h2>📋 Quick reference: the details</h2>
+<div class="box key"><b class="t">Key idea</b>Git records <b>snapshots (commits)</b> of your project. Each commit has an ID, an author, a message and points to its parent, forming a history you can browse, compare, branch and merge.</div>
+
+<h3>Three areas</h3>
+<table>
+<tr><th>Area</th><th>What it is</th><th>Move on</th></tr>
+<tr><td>Working directory</td><td>Your files as edited now</td><td><code>git add</code> →</td></tr>
+<tr><td>Staging area (index)</td><td>Changes chosen for the next commit</td><td><code>git commit</code> →</td></tr>
+<tr><td>Repository</td><td>Permanent history of commits</td><td><code>git push</code> → remote</td></tr>
+</table>
+
+<h3>Everyday workflow</h3>
+<pre><code>git clone URL            # copy a repo
+git status               # what changed?
+git diff                 # see the changes
+git add file.py          # stage
+git commit -m "Fix login redirect"
+git log --oneline        # history
+git pull                 # fetch + merge remote changes
+git push                 # publish your commits</code></pre>
+
+<h3>Branches</h3>
+<p>A <b>branch</b> is a movable pointer to a commit, a cheap parallel line of work.</p>
+<pre><code>git switch -c feature/search    # create + move to branch
+# ...commit work...
+git switch main
+git merge feature/search        # bring the work in</code></pre>
+<ul>
+<li><b>Merge conflict</b>: two branches changed the same lines. Git marks them (<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code>, <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>); you edit to the right result, <code>git add</code>, commit.</li>
+<li><b>Pull request (PR)</b>: on GitHub/GitLab, a request to merge your branch with review and discussion.</li>
+</ul>
+
+<h3>Good habits</h3>
+<ul>
+<li>Small, focused commits with messages saying <em>why</em>.</li>
+<li><code>.gitignore</code> keeps build output, <code>node_modules</code> and <b>secrets (.env)</b> out. A secret committed once stays in history; rotate it.</li>
+<li>Undo: <code>git restore file</code> (discard edits), <code>git revert &lt;id&gt;</code> (new commit undoing an old one, safe for shared history). Avoid rewriting history that others have pulled.</li>
+<li>Git ≠ GitHub: Git is the tool; GitHub is a hosting service.</li>
+</ul>
+
+<h2>Check your understanding</h2><div id="quiz"></div>
+<h2>Think it through</h2><div id="think"></div>
+<div class="pager"><a href="06-shell.html">← Shell</a><a href="08-programming.html">Next: Programming Fundamentals →</a></div>
+</main>
+<script>
+window.QUIZ=[
+{q:"What is a commit?",options:["A remote server","A snapshot of the project with message, author and parent","A branch name","A merge conflict"],answer:1,why:"Commits are the building blocks of history."},
+{q:"What does `git add` do?",options:["Saves to the remote","Stages changes for the next commit","Creates a branch","Deletes files"],answer:1,why:"It moves changes to the staging area; commit then records them."},
+{q:"A branch is best described as:",options:["A full copy of the project folder","A lightweight pointer to a commit","A remote","A tag for bugs"],answer:1,why:"Branches are cheap pointers, which is why branching is encouraged."},
+{q:"When does a merge conflict happen?",options:["Whenever you merge","When both sides changed the same lines differently","When offline","When the commit message is short"],answer:1,why:"Git can't decide which change wins, so a human resolves it."},
+{q:"You committed an API key, then deleted it in a new commit. Is it safe?",options:["Yes, it's gone","No, it's still in history; revoke/rotate the key","Yes if repo is private forever","Only if you push"],answer:1,why:"History keeps old versions; treat it as leaked."},
+{q:"Which relationship is correct?",options:["Git is a website owned by GitHub","GitHub hosts Git repositories; Git is the tool","They're identical","Git needs GitHub to work"],answer:1,why:"Git works fully offline locally; GitHub is one host."},
+{q:"What's a safe way to undo a commit already pushed and used by others?",options:["Force-push a rewritten history","git revert, creating a new undoing commit","Delete the repo","Reset hard locally"],answer:1,why:"Revert adds history instead of rewriting shared history."}
+];
+window.THINK=[
+{q:"Why make small commits instead of one big one at the end of the day?",a:"Easier review, easier to find which change broke something (bisect), easier to revert one piece, clearer history."},
+{q:"Two teammates edit the same function. Describe how you'd resolve it.",a:"Pull, see conflict markers, talk to the teammate if intent is unclear, edit to a combined correct version, run tests, add and commit the merge."}
+];
+</script><script src="quiz.js"></script></body></html>
